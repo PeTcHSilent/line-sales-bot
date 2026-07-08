@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sales Bot Admin</title>
+<style>
+  :root{--blue:#1a56db;--blue-light:#dbeafe;--green:#059669;--red:#dc2626;--yellow:#d97706;--gray:#6b7280;--bg:#f3f4f6;--card:#fff;--border:#e5e7eb;--text:#111827;--text2:#374151;--text3:#6b7280}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+  /* ── Login ── */
+  #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e3a8a,#1a56db)}
+  .login-box{background:#fff;border-radius:16px;padding:40px 36px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+  .login-box h1{text-align:center;color:var(--blue);margin-bottom:8px;font-size:1.5rem}
+  .login-box p{text-align:center;color:var(--gray);font-size:.85rem;margin-bottom:28px}
+  .form-group{margin-bottom:16px}
+  .form-group label{display:block;font-size:.85rem;font-weight:600;color:var(--text2);margin-bottom:6px}
+  .form-group input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.95rem;outline:none;transition:border .2s}
+  .form-group input:focus{border-color:var(--blue)}
+  .btn-primary{width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:8px;transition:background .2s}
+  .btn-primary:hover{background:#1d4ed8}
+  #login-error{color:var(--red);font-size:.83rem;text-align:center;margin-top:10px;display:none}
+
+  /* ── Layout ── */
+  #app{display:none}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:#1e3a8a;padding:0;z-index:100;overflow-y:auto}
+  .sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
+  .sidebar-logo h2{color:#fff;font-size:1rem;font-weight:700}
+  .sidebar-logo p{color:#93c5fd;font-size:.75rem;margin-top:2px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:11px 18px;color:rgba(255,255,255,.75);cursor:pointer;font-size:.87rem;transition:all .15s;border-left:3px solid transparent}
+  .nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
+  .nav-item.active{background:rgba(255,255,255,.15);color:#fff;border-left-color:#60a5fa}
+  .nav-item .icon{width:18px;text-align:center;font-size:1rem}
+  .nav-section{padding:14px 18px 6px;color:#93c5fd;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .nav-logout{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding:10px 0}
+
+  .main{margin-left:220px;min-height:100vh;display:flex;flex-direction:column}
+  .topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between}
+  .topbar h1{font-size:1.1rem;font-weight:700;color:var(--text)}
+  .topbar-right{display:flex;align-items:center;gap:12px;color:var(--text3);font-size:.85rem}
+  .content{padding:24px 28px;flex:1}
+
+  /* ── Cards / Stats ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+  .stat-card{background:var(--card);border-radius:12px;padding:18px;border:1px solid var(--border)}
+  .stat-card .val{font-size:1.8rem;font-weight:700;color:var(--text)}
+  .stat-card .lbl{font-size:.78rem;color:var(--gray);margin-top:4px}
+  .stat-card.blue .val{color:var(--blue)}
+  .stat-card.green .val{color:var(--green)}
+  .stat-card.red .val{color:var(--red)}
+  .stat-card.yellow .val{color:var(--yellow)}
+
+  /* ── Table ── */
+  .card{background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden}
+  .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .card-header h3{font-size:.95rem;font-weight:700}
+  .card-body{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th{background:#f9fafb;padding:10px 14px;text-align:left;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+  td{padding:10px 14px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#f9fafb}
+  .empty-row td{text-align:center;color:var(--gray);padding:32px}
+
+  /* ── Badges ── */
+  .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.75rem;font-weight:600}
+  .badge-new{background:#dbeafe;color:#1d4ed8}
+  .badge-contacted{background:#d1fae5;color:#065f46}
+  .badge-quoted{background:#fef3c7;color:#92400e}
+  .badge-closed{background:#dcfce7;color:#14532d}
+  .badge-lost{background:#fee2e2;color:#991b1b}
+  .badge-hot{background:#fee2e2;color:#991b1b}
+  .badge-warm{background:#fef3c7;color:#92400e}
+  .badge-cold{background:#dbeafe;color:#1e40af}
+
+  /* ── Controls ── */
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .search-input{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;outline:none;width:220px}
+  .search-input:focus{border-color:var(--blue)}
+  select.filter-sel{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:.83rem;outline:none;background:#fff;cursor:pointer}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+  .btn-sm{padding:5px 10px;font-size:.78rem}
+  .btn-blue{background:var(--blue);color:#fff}
+  .btn-blue:hover{background:#1d4ed8}
+  .btn-ghost{background:#fff;color:var(--text2);border:1px solid var(--border)}
+  .btn-ghost:hover{background:#f3f4f6}
+  .btn-red{background:var(--red);color:#fff}
+  .btn-red:hover{background:#b91c1c}
+  .btn-green{background:var(--green);color:#fff}
+  .btn-green:hover{background:#047857}
+
+  /* ── Pagination ── */
+  .pagination{display:flex;align-items:center;gap:8px;padding:14px 20px;justify-content:flex-end;border-top:1px solid var(--border)}
+  .page-info{font-size:.82rem;color:var(--gray)}
+  .page-btn{padding:5px 12px;border:1px solid var(--border);background:#fff;border-radius:6px;font-size:.82rem;cursor:pointer}
+  .page-btn:disabled{opacity:.4;cursor:default}
+  .page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+  /* ── Modal ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:16px;width:560px;max-width:95vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.25)}
+  .modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .modal-header h3{font-size:1rem;font-weight:700}
+  .modal-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--gray);line-height:1}
+  .modal-body{padding:20px 22px;overflow-y:auto;flex:1}
+  .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .form-row.single{grid-template-columns:1fr}
+  .field-group{display:flex;flex-direction:column;gap:5px}
+  .field-group label{font-size:.8rem;font-weight:600;color:var(--text2)}
+  .field-group input,.field-group select,.field-group textarea{padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:.85rem;outline:none;font-family:inherit}
+  .field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--blue)}
+  .field-group textarea{resize:vertical;min-height:80px}
+
+  /* ── Chat panel ── */
+  .chat-container{height:380px;overflow-y:auto;background:#f3f4f6;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .chat-msg{max-width:75%;padding:10px 14px;border-radius:12px;font-size:.85rem;line-height:1.5;word-break:break-word}
+  .chat-msg.user{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+  .chat-msg.bot{background:#fff;color:var(--text);align-self:flex-start;border:1px solid var(--border);border-bottom-left-radius:4px}
+  .chat-label{font-size:.7rem;color:var(--gray);margin-bottom:2px;text-align:right}
+  .chat-label.left{text-align:left}
+
+  /* ── Toast ── */
+  #toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+  .toast{padding:12px 18px;border-radius:10px;color:#fff;font-size:.85rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);animation:slideIn .25s ease}
+  .toast.success{background:#059669}
+  .toast.error{background:#dc2626}
+  .toast.info{background:#1a56db}
+  @keyframes slideIn{from{transform:translateX(60px);opacity:0}to{transform:none;opacity:1}}
+
+  /* ── Responsive ── */
+  @media(max-width:768px){
+    .sidebar{transform:translateX(-100%)}
+    .main{margin-left:0}
+    .form-row{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🚗 Sales Bot Admin</h1>
+    <p>ต่อกัน ประกันภัย — ระบบจัดการ Leads</p>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="login-username" placeholder="admin" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" />
+    </div>
+    <button class="btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div id="login-error">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════ -->
+<div id="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h2>🚗 Sales Bot</h2>
+      <p>Admin Panel</p>
+    </div>
+    <div class="nav-section">เมนูหลัก</div>
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <span class="icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('leads')" id="nav-leads">
+      <span class="icon">👥</span> Leads ทั้งหมด
+    </div>
+    <div class="nav-section">ระบบ</div>
+    <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+      <span class="icon">⚙️</span> ตั้งค่าบัญชี
+    </div>
+    <div class="nav-logout">
+      <div class="nav-item" onclick="doLogout()">
+        <span class="icon">🚪</span> ออกจากระบบ
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="page-title">Dashboard</h1>
+      <div class="topbar-right">
+        <span id="user-display">กำลังโหลด...</span>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- ── Dashboard ── -->
+      <div id="page-dashboard">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card blue"><div class="val" id="stat-total">—</div><div class="lbl">Leads ทั้งหมด</div></div>
+          <div class="stat-card red"><div class="val" id="stat-hot">—</div><div class="lbl">🔥 Hot</div></div>
+          <div class="stat-card yellow"><div class="val" id="stat-warm">—</div><div class="lbl">✨ Warm</div></div>
+          <div class="stat-card"><div class="val" id="stat-cold">—</div><div class="lbl">❄️ Cold</div></div>
+          <div class="stat-card"><div class="val" id="stat-new">—</div><div class="lbl">ใหม่</div></div>
+          <div class="stat-card"><div class="val" id="stat-contacted">—</div><div class="lbl">ติดต่อแล้ว</div></div>
+          <div class="stat-card"><div class="val" id="stat-quoted">—</div><div class="lbl">ส่งใบเสนอ</div></div>
+          <div class="stat-card green"><div class="val" id="stat-closed">—</div><div class="lbl">ปิดการขาย</div></div>
+          <div class="stat-card"><div class="val" id="stat-7d">—</div><div class="lbl">7 วันล่าสุด</div></div>
+          <div class="stat-card"><div class="val" id="stat-30d">—</div><div class="lbl">30 วันล่าสุด</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>🔥 Hot Leads ล่าสุด</h3>
+            <button class="btn btn-blue btn-sm" onclick="showPage('leads')">ดูทั้งหมด →</button>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>ชื่อ / LINE</th><th>เบอร์</th><th>รถ</th><th>ประกัน</th><th>สถานะ</th><th>วันที่</th><th></th></tr></thead>
+              <tbody id="hot-leads-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Leads ── -->
+      <div id="page-leads" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <h3>👥 Leads ทั้งหมด</h3>
+            <div class="controls">
+              <input type="text" class="search-input" id="leads-search" placeholder="ค้นหาชื่อ / เบอร์..." oninput="filterLeads()" />
+              <select class="filter-sel" id="leads-status-filter" onchange="filterLeads()">
+                <option value="">สถานะทั้งหมด</option>
+                <option value="new">ใหม่</option>
+                <option value="contacted">ติดต่อแล้ว</option>
+                <option value="quoted">ส่งใบเสนอ</option>
+                <option value="closed">ปิดการขาย</option>
+                <option value="lost">เสียลูกค้า</option>
+              </select>
+              <select class="filter-sel" id="leads-interest-filter" onchange="filterLeads()">
+                <option value="">ความสนใจทั้งหมด</option>
+                <option value="hot">🔥 Hot</option>
+                <option value="warm">✨ Warm</option>
+                <option value="cold">❄️ Cold</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="loadLeads()">🔄 รีเฟรช</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>ชื่อ / LINE</th><th>เบอร์</th><th>รถ</th>
+                  <th>ประกัน</th><th>ความสนใจ</th><th>สถานะ</th><th>วันที่</th><th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="leads-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <span class="page-info" id="leads-page-info">—</span>
+            <button class="page-btn" id="btn-prev" onclick="changePage(-1)" disabled>‹ ก่อน</button>
+            <button class="page-btn" id="btn-next" onclick="changePage(1)" disabled>ถัดไป ›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Settings ── -->
+      <div id="page-settings" style="display:none">
+        <div class="card" style="max-width:500px">
+          <div class="card-header"><h3>⚙️ LINE User ID สำหรับรับแจ้งเตือน</h3></div>
+          <div class="card-body" style="padding:20px">
+            <p style="font-size:.85rem;color:var(--gray);margin-bottom:16px">
+              กรอก LINE User ID ของ Admin เพื่อรับการแจ้งเตือนเมื่อมี Lead ใหม่<br>
+              ดู User ID ได้จาก LINE OA Manager → Chat → คลิกผู้ใช้
+            </p>
+            <div id="admin-users-list"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Lead Detail ══ -->
+<div class="modal-overlay" id="modal-lead">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-lead-title">รายละเอียด Lead</h3>
+      <button class="modal-close" onclick="closeLeadModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="field-group">
+          <label>ชื่อลูกค้า</label>
+          <input type="text" id="f-customer-name" />
+        </div>
+        <div class="field-group">
+          <label>เบอร์โทร</label>
+          <input type="text" id="f-phone" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field-group">
+          <label>ยี่ห้อรถ</label>
+          <input type="text" id="f-car-brand" />
+        </div>
+        <div class="field-group">
+          <label>รุ่น</label>
+          <input type="text" id="f-car-model" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field-group">
+          <label>ปี</label>
+          <input type="text" id="f-car-year" />
+        </div>
+        <div class="field-group">
+          <label>ประเภทประกัน</label>
+          <select id="f-insurance-type">
+            <option value="">-- เลือก --</option>
+            <option value="type1">ชั้น 1</option>
+            <option value="type2+">ชั้น 2+</option>
+            <option value="type2">ชั้น 2</option>
+            <option value="type3+">ชั้น 3+</option>
+            <option value="type3">ชั้น 3</option>
+            <option value="compulsory">พ.ร.บ.</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field-group">
+          <label>ความสนใจ</label>
+          <select id="f-interest-level">
+            <option value="hot">🔥 Hot</option>
+            <option value="warm">✨ Warm</option>
+            <option value="cold">❄️ Cold</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>สถานะ</label>
+          <select id="f-status">
+            <option value="new">ใหม่</option>
+            <option value="contacted">ติดต่อแล้ว</option>
+            <option value="quoted">ส่งใบเสนอ</option>
+            <option value="closed">ปิดการขาย ✅</option>
+            <option value="lost">เสียลูกค้า ❌</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="field-group">
+          <label>หมายเหตุ</label>
+          <textarea id="f-notes" placeholder="บันทึกเพิ่มเติม..."></textarea>
+        </div>
+      </div>
+
+      <!-- Chat history -->
+      <div style="margin-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <strong style="font-size:.88rem">💬 ประวัติการสนทนา</strong>
+          <button class="btn btn-ghost btn-sm" id="btn-reset-chat" onclick="resetChat()">🗑️ ล้างบทสนทนา</button>
+        </div>
+        <div class="chat-container" id="chat-container">
+          <div style="text-align:center;color:var(--gray);font-size:.83rem;margin:auto">กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeLeadModal()">ยกเลิก</button>
+      <button class="btn btn-blue" onclick="saveLead()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// ════════════════════════════════════════════
+//  State
+// ════════════════════════════════════════════
+let authToken = localStorage.getItem('sb_token') || '';
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let leadsTotal = 0;
+let currentLeadId = null;
+let currentLeadLineId = null;
+let currentPageName = 'dashboard';
+
+// ════════════════════════════════════════════
+//  Utilities
+// ════════════════════════════════════════════
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+function fmt(str) {
+  if (!str) return '—';
+  return new Date(str).toLocaleDateString('th-TH', { day:'2-digit', month:'short', year:'2-digit' });
+}
+
+function statusBadge(s) {
+  const map = { new:'badge-new', contacted:'badge-contacted', quoted:'badge-quoted', closed:'badge-closed', lost:'badge-lost' };
+  const lbl = { new:'ใหม่', contacted:'ติดต่อแล้ว', quoted:'ส่งใบเสนอ', closed:'ปิดขาย', lost:'เสียลูกค้า' };
+  return `<span class="badge ${map[s]||''}">${lbl[s]||s}</span>`;
+}
+
+function interestBadge(i) {
+  const map = { hot:'badge-hot', warm:'badge-warm', cold:'badge-cold' };
+  const lbl = { hot:'🔥 Hot', warm:'✨ Warm', cold:'❄️ Cold' };
+  return `<span class="badge ${map[i]||''}">${lbl[i]||i}</span>`;
+}
+
+function carText(lead) {
+  return [lead.car_brand, lead.car_model, lead.car_year].filter(Boolean).join(' ') || '—';
+}
+
+const INSURANCE_LABEL = {
+  type1:'ชั้น 1', 'type2+':'ชั้น 2+', type2:'ชั้น 2',
+  'type3+':'ชั้น 3+', type3:'ชั้น 3', compulsory:'พ.ร.บ.'
+};
+
+// ════════════════════════════════════════════
+//  API helper
+// ════════════════════════════════════════════
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+authToken } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  if (r.status === 401) { doLogout(); return null; }
+  return r.json();
+}
+
+// ════════════════════════════════════════════
+//  Auth
+// ════════════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) return;
+  const r = await fetch('/api/admin/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ username, password })
+  });
+  const data = await r.json();
+  if (data.success) {
+    authToken = data.token;
+    localStorage.setItem('sb_token', authToken);
+    document.getElementById('user-display').textContent = data.display_name || username;
+    startApp();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  authToken = '';
+  localStorage.removeItem('sb_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ════════════════════════════════════════════
+//  App init
+// ════════════════════════════════════════════
+async function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  const me = await api('GET', '/admin/me');
+  if (me?.success) document.getElementById('user-display').textContent = me.user.display_name || me.user.username;
+  showPage('dashboard');
+}
+
+document.getElementById('login-password').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+
+// ════════════════════════════════════════════
+//  Navigation
+// ════════════════════════════════════════════
+const PAGE_TITLES = { dashboard:'📊 Dashboard', leads:'👥 Leads', settings:'⚙️ ตั้งค่า' };
+
+function showPage(name) {
+  currentPageName = name;
+  ['dashboard','leads','settings'].forEach(p => {
+    document.getElementById('page-'+p).style.display = p===name ? 'block' : 'none';
+    const nav = document.getElementById('nav-'+p);
+    if (nav) nav.classList.toggle('active', p===name);
+  });
+  document.getElementById('page-title').textContent = PAGE_TITLES[name] || name;
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'leads')     { currentPage=1; loadLeads(); }
+  if (name === 'settings')  loadSettings();
+}
+
+// ════════════════════════════════════════════
+//  Dashboard
+// ════════════════════════════════════════════
+async function loadDashboard() {
+  const [stats, hot] = await Promise.all([
+    api('GET', '/leads/stats'),
+    api('GET', '/leads?interest_level=hot&limit=8&offset=0'),
+  ]);
+
+  if (stats?.success) {
+    const s = stats.stats;
+    document.getElementById('stat-total').textContent     = s.total       || 0;
+    document.getElementById('stat-hot').textContent       = s.hot         || 0;
+    document.getElementById('stat-warm').textContent      = s.warm        || 0;
+    document.getElementById('stat-cold').textContent      = s.cold        || 0;
+    document.getElementById('stat-new').textContent       = s.new_leads   || 0;
+    document.getElementById('stat-contacted').textContent = s.contacted   || 0;
+    document.getElementById('stat-quoted').textContent    = s.quoted      || 0;
+    document.getElementById('stat-closed').textContent    = s.closed      || 0;
+    document.getElementById('stat-7d').textContent        = s.last_7_days || 0;
+    document.getElementById('stat-30d').textContent       = s.last_30_days|| 0;
+  }
+
+  const tbody = document.getElementById('hot-leads-body');
+  if (hot?.success && hot.leads.length) {
+    tbody.innerHTML = hot.leads.map(l => `
+      <tr>
+        <td><strong>${l.customer_name || l.line_display_name || '—'}</strong></td>
+        <td>${l.phone || '—'}</td>
+        <td style="font-size:.78rem">${carText(l)}</td>
+        <td>${INSURANCE_LABEL[l.insurance_type]||'—'}</td>
+        <td>${statusBadge(l.status)}</td>
+        <td style="font-size:.78rem;color:var(--gray)">${fmt(l.created_at)}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openLeadModal(${l.id})">แก้ไข</button></td>
+      </tr>`).join('');
+  } else {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">ยังไม่มี Hot Leads</td></tr>';
+  }
+}
+
+// ════════════════════════════════════════════
+//  Leads table
+// ════════════════════════════════════════════
+let filterTimer;
+function filterLeads() {
+  clearTimeout(filterTimer);
+  filterTimer = setTimeout(() => { currentPage=1; loadLeads(); }, 350);
+}
+
+function changePage(dir) {
+  const maxPage = Math.ceil(leadsTotal / PAGE_SIZE);
+  currentPage = Math.max(1, Math.min(maxPage, currentPage + dir));
+  loadLeads();
+}
+
+async function loadLeads() {
+  const search   = document.getElementById('leads-search').value.trim();
+  const status   = document.getElementById('leads-status-filter').value;
+  const interest = document.getElementById('leads-interest-filter').value;
+  const offset   = (currentPage-1)*PAGE_SIZE;
+
+  let qs = `?limit=${PAGE_SIZE}&offset=${offset}`;
+  if (search)   qs += `&search=${encodeURIComponent(search)}`;
+  if (status)   qs += `&status=${status}`;
+  if (interest) qs += `&interest_level=${interest}`;
+
+  const data = await api('GET', '/leads'+qs);
+  if (!data?.success) return;
+
+  leadsTotal = data.total || 0;
+  const maxPage = Math.ceil(leadsTotal/PAGE_SIZE) || 1;
+  document.getElementById('leads-page-info').textContent = `แสดง ${Math.min(offset+1,leadsTotal)}–${Math.min(offset+PAGE_SIZE,leadsTotal)} จาก ${leadsTotal}`;
+  document.getElementById('btn-prev').disabled = currentPage<=1;
+  document.getElementById('btn-next').disabled = currentPage>=maxPage;
+
+  const tbody = document.getElementById('leads-body');
+  if (!data.leads.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">ไม่พบข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.leads.map((l,i) => `
+    <tr>
+      <td style="color:var(--gray);font-size:.78rem">${offset+i+1}</td>
+      <td>
+        <strong>${l.customer_name || l.line_display_name || '—'}</strong>
+        ${l.line_display_name&&l.customer_name?`<br><span style="font-size:.75rem;color:var(--gray)">LINE: ${l.line_display_name}</span>`:''}
+      </td>
+      <td>${l.phone||'—'}</td>
+      <td style="font-size:.8rem">${carText(l)}</td>
+      <td>${INSURANCE_LABEL[l.insurance_type]||'—'}</td>
+      <td>${interestBadge(l.interest_level)}</td>
+      <td>${statusBadge(l.status)}</td>
+      <td style="font-size:.78rem;color:var(--gray)">${fmt(l.created_at)}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openLeadModal(${l.id})">✏️ แก้ไข</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════
+//  Lead Modal
+// ════════════════════════════════════════════
+async function openLeadModal(id) {
+  currentLeadId = id;
+  const data = await api('GET', '/leads/'+id);
+  if (!data?.success) return;
+  const l = data.lead;
+  currentLeadLineId = l.line_user_id;
+
+  document.getElementById('modal-lead-title').textContent = `Lead: ${l.customer_name || l.line_display_name || '#'+id}`;
+  document.getElementById('f-customer-name').value = l.customer_name || '';
+  document.getElementById('f-phone').value          = l.phone || '';
+  document.getElementById('f-car-brand').value      = l.car_brand || '';
+  document.getElementById('f-car-model').value      = l.car_model || '';
+  document.getElementById('f-car-year').value       = l.car_year || '';
+  document.getElementById('f-insurance-type').value = l.insurance_type || '';
+  document.getElementById('f-interest-level').value = l.interest_level || 'warm';
+  document.getElementById('f-status').value         = l.status || 'new';
+  document.getElementById('f-notes').value          = l.notes || '';
+
+  document.getElementById('modal-lead').classList.add('open');
+  loadChatHistory();
+}
+
+function closeLeadModal() {
+  document.getElementById('modal-lead').classList.remove('open');
+  currentLeadId = null;
+  currentLeadLineId = null;
+}
+
+async function saveLead() {
+  if (!currentLeadId) return;
+  const body = {
+    customer_name:  document.getElementById('f-customer-name').value.trim()||null,
+    phone:          document.getElementById('f-phone').value.trim()||null,
+    car_brand:      document.getElementById('f-car-brand').value.trim()||null,
+    car_model:      document.getElementById('f-car-model').value.trim()||null,
+    car_year:       document.getElementById('f-car-year').value.trim()||null,
+    insurance_type: document.getElementById('f-insurance-type').value||null,
+    interest_level: document.getElementById('f-interest-level').value,
+    status:         document.getElementById('f-status').value,
+    notes:          document.getElementById('f-notes').value.trim()||null,
+  };
+  const r = await api('PATCH', '/leads/'+currentLeadId, body);
+  if (r?.success) {
+    toast('บันทึกสำเร็จ ✅');
+    closeLeadModal();
+    if (currentPageName==='dashboard') loadDashboard();
+    else loadLeads();
+  } else {
+    toast('เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+//  Chat history
+// ════════════════════════════════════════════
+async function loadChatHistory() {
+  const container = document.getElementById('chat-container');
+  container.innerHTML = '<div style="text-align:center;color:var(--gray);font-size:.83rem;margin:auto">กำลังโหลด...</div>';
+
+  const data = await api('GET', '/leads/'+currentLeadId+'/conversation');
+  if (!data?.success || !data.conversation) {
+    container.innerHTML = '<div style="text-align:center;color:var(--gray);font-size:.83rem;margin:auto">ยังไม่มีการสนทนา</div>';
+    return;
+  }
+  const history = data.conversation.history || [];
+  if (!history.length) {
+    container.innerHTML = '<div style="text-align:center;color:var(--gray);font-size:.83rem;margin:auto">ยังไม่มีการสนทนา</div>';
+    return;
+  }
+  container.innerHTML = history.map(m => `
+    <div>
+      <div class="chat-label ${m.role==='user'?'':'left'}">${m.role==='user'?'ลูกค้า':'น้องต่อ 🤖'}</div>
+      <div class="chat-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>
+    </div>`).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+async function resetChat() {
+  if (!currentLeadId) return;
+  if (!confirm('ล้างบทสนทนาทั้งหมดของ Lead นี้?')) return;
+  const r = await api('DELETE', '/leads/'+currentLeadId+'/conversation');
+  if (r?.success) {
+    toast('ล้างบทสนทนาแล้ว', 'info');
+    loadChatHistory();
+  } else {
+    toast('เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ════════════════════════════════════════════
+//  Settings
+// ════════════════════════════════════════════
+async function loadSettings() {
+  const data = await api('GET', '/admin/users');
+  if (!data?.success) return;
+  const container = document.getElementById('admin-users-list');
+  container.innerHTML = data.users.map(u => `
+    <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <strong>${u.display_name||u.username}</strong>
+          <span style="font-size:.78rem;color:var(--gray);margin-left:8px">@${u.username}</span>
+          ${u.is_active?'<span class="badge badge-contacted" style="margin-left:6px">Active</span>':''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="line-id-${u.id}" value="${u.line_user_id||''}" placeholder="U1234abcd..."
+               style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem" />
+        <button class="btn btn-blue btn-sm" onclick="saveLineId(${u.id})">บันทึก LINE ID</button>
+      </div>
+      <div style="font-size:.75rem;color:var(--gray);margin-top:5px">
+        LINE User ID สำหรับรับการแจ้งเตือนจาก Sales Bot
+      </div>
+    </div>`).join('');
+}
+
+async function saveLineId(userId) {
+  const lineId = document.getElementById('line-id-'+userId).value.trim();
+  const r = await api('PATCH', '/admin/users/'+userId+'/line', { line_user_id: lineId||null });
+  if (r?.success) toast('บันทึก LINE ID สำเร็จ ✅');
+  else toast('เกิดข้อผิดพลาด', 'error');
+}
+
+// ════════════════════════════════════════════
+//  Auto-login if token saved
+// ════════════════════════════════════════════
+(async () => {
+  if (authToken) {
+    const me = await api('GET', '/admin/me');
+    if (me?.success) {
+      document.getElementById('user-display').textContent = me.user.display_name || me.user.username;
+      startApp();
+    } else {
+      authToken = '';
+      localStorage.removeItem('sb_token');
+    }
+  }
+})();
+</script>
+</body>
+</html>
