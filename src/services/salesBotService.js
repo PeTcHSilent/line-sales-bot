@@ -41,7 +41,9 @@ const SYSTEM_PROMPT = `
 ปัจจัยที่กำหนดเบี้ย: ยี่ห้อ/รุ่น/ปีรถ, ทุนประกัน, ประวัติเคลม, เพศ/อายุผู้ขับ
 
 == วิธีการสนทนา ==
-1. ทักทายและถามว่าสนใจประกันประเภทใด
+1. ทักทายและถามว่าเป็น "ลูกค้าใหม่" หรือ "ต่ออายุกรมธรรม์เดิม"
+   - ลูกค้าใหม่: เริ่มถามข้อมูลรถและความต้องการ
+   - ลูกค้าต่ออายุ: ถามบริษัทประกันเดิม และวันหมดอายุกรมธรรม์ก่อน
 2. ถามข้อมูลรถทีละข้อ: ยี่ห้อ → รุ่น → ปี
 3. แนะนำชั้นประกันที่เหมาะสมพร้อมอธิบายความคุ้มครอง
 4. เมื่อสนใจ ขอชื่อและเบอร์โทรเพื่อส่งใบเสนอราคา
@@ -59,6 +61,13 @@ const SYSTEM_PROMPT = `
 function extractPhone(text) {
   const m = text.match(/0[689]\d{8}|0[2-9]\d{7}/);
   return m ? m[0].replace(/[-\s]/g, '') : null;
+}
+
+// ตรวจจับ keyword ต่ออายุ — ทำงานทันทีเมื่อลูกค้าพิมพ์
+const RENEWAL_PATTERN = /ต่ออายุ|ต่อประกัน|ต่อกรมธรรม์|แจ้งต่อ|แจ้งเตือนต่อ|หมดอายุ|expire|renewal|renew/i;
+
+function isRenewalMessage(text) {
+  return RENEWAL_PATTERN.test(text);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -207,8 +216,12 @@ async function extractLeadFields(history) {
     const resp = await axios.post('https://api.anthropic.com/v1/messages', {
       model: MODEL, max_tokens: 200,
       system: `วิเคราะห์บทสนทนาและตอบ JSON เท่านั้น:
-{"customer_name":null,"car_brand":null,"car_model":null,"car_year":null,"insurance_type":"type1|type2|type2+|type3|type3+|compulsory|null","interest_level":"hot|warm|cold"}
-ใช้ null ถ้าไม่มีข้อมูลในบทสนทนา interest_level: hot=ขอราคา/ให้เบอร์ warm=สนใจแต่ยังไม่ตัดสินใจ cold=แค่สอบถาม`,
+{"customer_name":null,"car_brand":null,"car_model":null,"car_year":null,"insurance_type":"type1|type2|type2+|type3|type3+|compulsory|null","interest_level":"hot|warm|cold","customer_type":"new|renewal","policy_expiry_date":"YYYY-MM-DD|null","current_insurer":null}
+ใช้ null ถ้าไม่มีข้อมูลในบทสนทนา
+interest_level: hot=ขอราคา/ให้เบอร์ warm=สนใจแต่ยังไม่ตัดสินใจ cold=แค่สอบถาม
+customer_type: new=ลูกค้าใหม่ renewal=ต่ออายุกรมธรรม์เดิม (ค่าเริ่มต้น new)
+policy_expiry_date: วันหมดอายุกรมธรรม์เดิม รูปแบบ YYYY-MM-DD (เฉพาะลูกค้าต่ออายุ)
+current_insurer: ชื่อบริษัทประกันเดิม (เฉพาะลูกค้าต่ออายุ)`,
       messages: [{
         role: 'user',
         content: history.slice(-8).map(m => `${m.role === 'user' ? 'ลูกค้า' : 'บอท'}: ${m.content}`).join('\n'),
@@ -282,6 +295,13 @@ async function handleMessage(lineUserId, displayName, text) {
 
     // แจ้ง admin ทันที (background)
     notifyAdminNewLead({ line_display_name: displayName, phone, interest_level: 'hot' }).catch(() => {});
+  }
+
+  // ── Renewal keyword detection — ตรวจจับทันทีเมื่อลูกค้าพิมพ์ keyword ต่ออายุ ──
+  if (isRenewalMessage(text)) {
+    upsertLead(lineUserId, displayName, { customer_type: 'renewal' })
+      .then(() => console.log(`[salesBot] 🔄 Renewal detected: ${displayName}`))
+      .catch(() => {});
   }
 
   // ── Auto-extract ทุก 4 ข้อความ (หรือเมื่อ capture lead) ──
@@ -358,11 +378,12 @@ function buildWelcomeFlex(displayName) {
 // ─────────────────────────────────────────────────────────────────
 //  Admin: getLeads / updateLead / getLead / resetConversation
 // ─────────────────────────────────────────────────────────────────
-async function getLeads({ status, interest_level, search, limit = 50, offset = 0 } = {}) {
+async function getLeads({ status, interest_level, customer_type, search, limit = 50, offset = 0 } = {}) {
   const params = [];
   const where = [];
   if (status)         { params.push(status);         where.push(`status = $${params.length}`); }
   if (interest_level) { params.push(interest_level); where.push(`interest_level = $${params.length}`); }
+  if (customer_type)  { params.push(customer_type);  where.push(`customer_type = $${params.length}`); }
   if (search) {
     params.push(`%${search}%`);
     where.push(`(customer_name ILIKE $${params.length} OR phone ILIKE $${params.length} OR line_display_name ILIKE $${params.length})`);
@@ -384,7 +405,8 @@ async function getLead(id) {
 
 async function updateLead(id, fields) {
   const allowed = ['status','notes','customer_name','phone','car_brand','car_model','car_year',
-                   'insurance_type','interest_level','assigned_to'];
+                   'insurance_type','interest_level','assigned_to',
+                   'customer_type','policy_expiry_date','current_insurer'];
   const keys = Object.keys(fields).filter(k => allowed.includes(k));
   if (!keys.length) return null;
   const sets = keys.map((k, i) => `${k} = $${i+2}`).join(', ');

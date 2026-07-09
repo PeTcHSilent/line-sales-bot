@@ -252,6 +252,11 @@
                 <option value="warm">✨ Warm</option>
                 <option value="cold">❄️ Cold</option>
               </select>
+              <select class="filter-sel" id="leads-type-filter" onchange="filterLeads()">
+                <option value="">ลูกค้าทั้งหมด</option>
+                <option value="new">🆕 ลูกค้าใหม่</option>
+                <option value="renewal">🔄 ต่ออายุ</option>
+              </select>
               <button class="btn btn-ghost btn-sm" onclick="loadLeads()">🔄 รีเฟรช</button>
             </div>
           </div>
@@ -260,7 +265,7 @@
               <thead>
                 <tr>
                   <th>#</th><th>ชื่อ / LINE</th><th>เบอร์</th><th>รถ</th>
-                  <th>ประกัน</th><th>ความสนใจ</th><th>สถานะ</th><th>วันที่</th><th>จัดการ</th>
+                  <th>ประกัน</th><th>ประเภท</th><th>ความสนใจ</th><th>สถานะ</th><th>วันที่</th><th>จัดการ</th>
                 </tr>
               </thead>
               <tbody id="leads-body"></tbody>
@@ -402,6 +407,29 @@
       </div>
       <div class="form-row">
         <div class="field-group">
+          <label>ประเภทลูกค้า</label>
+          <select id="f-customer-type">
+            <option value="new">🆕 ลูกค้าใหม่</option>
+            <option value="renewal">🔄 ต่ออายุกรมธรรม์</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>บริษัทประกันเดิม <span style="font-size:.75rem;color:var(--gray)">(ต่ออายุ)</span></label>
+          <input type="text" id="f-current-insurer" placeholder="เช่น วิริยะ, เมืองไทย..." />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field-group">
+          <label>วันหมดอายุกรมธรรม์ <span style="font-size:.75rem;color:var(--gray)">(ต่ออายุ)</span></label>
+          <input type="date" id="f-policy-expiry-date" />
+        </div>
+        <div class="field-group">
+          <label>ประเภทประกันที่ต้องการ</label>
+          <!-- ย้ายมาจาก row ด้านบน เพื่อจัด layout ให้สม่ำเสมอ -->
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field-group">
           <label>ความสนใจ</label>
           <select id="f-interest-level">
             <option value="hot">🔥 Hot</option>
@@ -486,6 +514,11 @@ function interestBadge(i) {
   const map = { hot:'badge-hot', warm:'badge-warm', cold:'badge-cold' };
   const lbl = { hot:'🔥 Hot', warm:'✨ Warm', cold:'❄️ Cold' };
   return `<span class="badge ${map[i]||''}">${lbl[i]||i}</span>`;
+}
+
+function customerTypeBadge(t) {
+  if (t === 'renewal') return `<span class="badge" style="background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe">🔄 ต่ออายุ</span>`;
+  return `<span class="badge" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0">🆕 ใหม่</span>`;
 }
 
 function carText(lead) {
@@ -626,15 +659,17 @@ function changePage(dir) {
 }
 
 async function loadLeads() {
-  const search   = document.getElementById('leads-search').value.trim();
-  const status   = document.getElementById('leads-status-filter').value;
-  const interest = document.getElementById('leads-interest-filter').value;
-  const offset   = (currentPage-1)*PAGE_SIZE;
+  const search      = document.getElementById('leads-search').value.trim();
+  const status      = document.getElementById('leads-status-filter').value;
+  const interest    = document.getElementById('leads-interest-filter').value;
+  const custType    = document.getElementById('leads-type-filter').value;
+  const offset      = (currentPage-1)*PAGE_SIZE;
 
   let qs = `?limit=${PAGE_SIZE}&offset=${offset}`;
   if (search)   qs += `&search=${encodeURIComponent(search)}`;
   if (status)   qs += `&status=${status}`;
   if (interest) qs += `&interest_level=${interest}`;
+  if (custType) qs += `&customer_type=${custType}`;
 
   const data = await api('GET', '/leads'+qs);
   if (!data?.success) return;
@@ -660,6 +695,7 @@ async function loadLeads() {
       <td>${l.phone||'—'}</td>
       <td style="font-size:.8rem">${carText(l)}</td>
       <td>${INSURANCE_LABEL[l.insurance_type]||'—'}</td>
+      <td>${customerTypeBadge(l.customer_type)}</td>
       <td>${interestBadge(l.interest_level)}</td>
       <td>${statusBadge(l.status)}</td>
       <td style="font-size:.78rem;color:var(--gray)">${fmt(l.created_at)}</td>
@@ -680,15 +716,18 @@ async function openLeadModal(id) {
   currentLeadLineId = l.line_user_id;
 
   document.getElementById('modal-lead-title').textContent = `Lead: ${l.customer_name || l.line_display_name || '#'+id}`;
-  document.getElementById('f-customer-name').value = l.customer_name || '';
-  document.getElementById('f-phone').value          = l.phone || '';
-  document.getElementById('f-car-brand').value      = l.car_brand || '';
-  document.getElementById('f-car-model').value      = l.car_model || '';
-  document.getElementById('f-car-year').value       = l.car_year || '';
-  document.getElementById('f-insurance-type').value = l.insurance_type || '';
-  document.getElementById('f-interest-level').value = l.interest_level || 'warm';
-  document.getElementById('f-status').value         = l.status || 'new';
-  document.getElementById('f-notes').value          = l.notes || '';
+  document.getElementById('f-customer-name').value    = l.customer_name || '';
+  document.getElementById('f-phone').value             = l.phone || '';
+  document.getElementById('f-car-brand').value         = l.car_brand || '';
+  document.getElementById('f-car-model').value         = l.car_model || '';
+  document.getElementById('f-car-year').value          = l.car_year || '';
+  document.getElementById('f-insurance-type').value    = l.insurance_type || '';
+  document.getElementById('f-interest-level').value    = l.interest_level || 'warm';
+  document.getElementById('f-status').value            = l.status || 'new';
+  document.getElementById('f-notes').value             = l.notes || '';
+  document.getElementById('f-customer-type').value     = l.customer_type || 'new';
+  document.getElementById('f-current-insurer').value   = l.current_insurer || '';
+  document.getElementById('f-policy-expiry-date').value = l.policy_expiry_date ? l.policy_expiry_date.substring(0,10) : '';
 
   document.getElementById('modal-lead').classList.add('open');
   loadChatHistory();
@@ -708,10 +747,13 @@ async function saveLead() {
     car_brand:      document.getElementById('f-car-brand').value.trim()||null,
     car_model:      document.getElementById('f-car-model').value.trim()||null,
     car_year:       document.getElementById('f-car-year').value.trim()||null,
-    insurance_type: document.getElementById('f-insurance-type').value||null,
-    interest_level: document.getElementById('f-interest-level').value,
-    status:         document.getElementById('f-status').value,
-    notes:          document.getElementById('f-notes').value.trim()||null,
+    insurance_type:      document.getElementById('f-insurance-type').value||null,
+    interest_level:      document.getElementById('f-interest-level').value,
+    status:              document.getElementById('f-status').value,
+    notes:               document.getElementById('f-notes').value.trim()||null,
+    customer_type:       document.getElementById('f-customer-type').value || 'new',
+    current_insurer:     document.getElementById('f-current-insurer').value.trim()||null,
+    policy_expiry_date:  document.getElementById('f-policy-expiry-date').value||null,
   };
   const r = await api('PATCH', '/leads/'+currentLeadId, body);
   if (r?.success) {

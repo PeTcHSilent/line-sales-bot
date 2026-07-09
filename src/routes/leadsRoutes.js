@@ -8,8 +8,8 @@ const router = express.Router();
 // ── GET /api/leads ──────────────────────────────────────────────
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { status, interest_level, search, limit = 50, offset = 0 } = req.query;
-    const result = await salesBot.getLeads({ status, interest_level, search, limit: +limit, offset: +offset });
+    const { status, interest_level, customer_type, search, limit = 50, offset = 0 } = req.query;
+    const result = await salesBot.getLeads({ status, interest_level, customer_type, search, limit: +limit, offset: +offset });
     res.json({ success: true, ...result });
   } catch (e) {
     console.error('[leadsAPI] GET /leads:', e.message);
