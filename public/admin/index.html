@@ -868,22 +868,48 @@ async function loadSettings() {
   if (!data?.success) return;
   const container = document.getElementById('admin-users-list');
   container.innerHTML = data.users.map(u => `
-    <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
+
+      <!-- ชื่อผู้ใช้ -->
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;margin-right:10px">
+          ${(u.display_name||u.username).charAt(0).toUpperCase()}
+        </div>
         <div>
           <strong>${u.display_name||u.username}</strong>
-          <span style="font-size:.78rem;color:var(--gray);margin-left:8px">@${u.username}</span>
-          ${u.is_active?'<span class="badge badge-contacted" style="margin-left:6px">Active</span>':''}
+          <span style="font-size:.78rem;color:var(--gray);margin-left:6px">@${u.username}</span>
+          ${u.is_active ? '<span class="badge badge-contacted" style="margin-left:6px;font-size:.7rem">Active</span>' : ''}
         </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="line-id-${u.id}" value="${u.line_user_id||''}" placeholder="U1234abcd..."
-               style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem" />
-        <button class="btn btn-blue btn-sm" onclick="saveLineId(${u.id})">บันทึก LINE ID</button>
+
+      <!-- LINE User ID -->
+      <div style="margin-bottom:14px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--gray);display:block;margin-bottom:5px">📱 LINE User ID (รับแจ้งเตือน Lead ใหม่)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="line-id-${u.id}" value="${u.line_user_id||''}" placeholder="U1234abcd..."
+                 style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem" />
+          <button class="btn btn-blue btn-sm" onclick="saveLineId(${u.id})">บันทึก</button>
+        </div>
       </div>
-      <div style="font-size:.75rem;color:var(--gray);margin-top:5px">
-        LINE User ID สำหรับรับการแจ้งเตือนจาก Sales Bot
+
+      <!-- Reset Password -->
+      <div style="border-top:1px solid var(--border);padding-top:14px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">🔑 เปลี่ยนรหัสผ่าน</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="password" id="new-pw-${u.id}" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)"
+                 style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem"
+                 onkeydown="if(event.key==='Enter') changePassword(${u.id})" />
+          <input type="password" id="confirm-pw-${u.id}" placeholder="ยืนยันรหัสผ่าน"
+                 style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem"
+                 onkeydown="if(event.key==='Enter') changePassword(${u.id})" />
+          <button class="btn btn-sm" onclick="changePassword(${u.id})"
+                  style="background:#f97316;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;white-space:nowrap">
+            บันทึกรหัสผ่าน
+          </button>
+        </div>
+        <div id="pw-msg-${u.id}" style="font-size:.75rem;margin-top:5px;display:none"></div>
       </div>
+
     </div>`).join('');
 }
 
@@ -892,6 +918,32 @@ async function saveLineId(userId) {
   const r = await api('PATCH', '/admin/users/'+userId+'/line', { line_user_id: lineId||null });
   if (r?.success) toast('บันทึก LINE ID สำเร็จ ✅');
   else toast('เกิดข้อผิดพลาด', 'error');
+}
+
+async function changePassword(userId) {
+  const pw  = document.getElementById('new-pw-'+userId).value;
+  const cpw = document.getElementById('confirm-pw-'+userId).value;
+  const msg = document.getElementById('pw-msg-'+userId);
+
+  const showMsg = (text, ok) => {
+    msg.textContent = text;
+    msg.style.color = ok ? 'var(--green)' : 'var(--red,#ef4444)';
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 3000);
+  };
+
+  if (!pw || pw.length < 6) return showMsg('❌ รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', false);
+  if (pw !== cpw)            return showMsg('❌ รหัสผ่านไม่ตรงกัน', false);
+
+  const r = await api('PATCH', '/admin/users/'+userId+'/password', { password: pw });
+  if (r?.success) {
+    document.getElementById('new-pw-'+userId).value = '';
+    document.getElementById('confirm-pw-'+userId).value = '';
+    showMsg('✅ เปลี่ยนรหัสผ่านสำเร็จ', true);
+    toast('เปลี่ยนรหัสผ่านสำเร็จ ✅');
+  } else {
+    showMsg('❌ เกิดข้อผิดพลาด กรุณาลองใหม่', false);
+  }
 }
 
 // ════════════════════════════════════════════
