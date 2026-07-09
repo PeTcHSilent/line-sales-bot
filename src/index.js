@@ -6,6 +6,7 @@ const path       = require('path');
 const webhookRoutes = require('./routes/webhookRoutes');
 const leadsRoutes   = require('./routes/leadsRoutes');
 const adminRoutes   = require('./routes/adminRoutes');
+const usageRoutes   = require('./routes/usageRoutes');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ app.use('/', webhookRoutes);
 // ── REST API
 app.use('/api/leads',  leadsRoutes);
 app.use('/api/admin',  adminRoutes);
+app.use('/api/usage',  usageRoutes);
 
 // ── Admin Panel SPA
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));

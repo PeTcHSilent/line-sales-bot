@@ -179,6 +179,9 @@
       <span class="icon">👥</span> Leads ทั้งหมด
     </div>
     <div class="nav-section">ระบบ</div>
+    <div class="nav-item" onclick="showPage('usage')" id="nav-usage">
+      <span class="icon">📈</span> AI Usage & Cost
+    </div>
     <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
       <span class="icon">⚙️</span> ตั้งค่าบัญชี
     </div>
@@ -267,6 +270,68 @@
             <span class="page-info" id="leads-page-info">—</span>
             <button class="page-btn" id="btn-prev" onclick="changePage(-1)" disabled>‹ ก่อน</button>
             <button class="page-btn" id="btn-next" onclick="changePage(1)" disabled>ถัดไป ›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AI Usage ── -->
+      <div id="page-usage" style="display:none">
+        <div class="stats-grid" id="usage-stats-grid">
+          <div class="stat-card blue"><div class="val" id="u-total-calls">—</div><div class="lbl">API Calls ทั้งหมด</div></div>
+          <div class="stat-card"><div class="val" id="u-total-tokens">—</div><div class="lbl">Total Tokens</div></div>
+          <div class="stat-card green"><div class="val" id="u-total-thb">—</div><div class="lbl">ค่าใช้จ่ายรวม (THB)</div></div>
+          <div class="stat-card yellow"><div class="val" id="u-month-thb">—</div><div class="lbl">เดือนนี้ (THB)</div></div>
+          <div class="stat-card"><div class="val" id="u-7d-thb">—</div><div class="lbl">7 วันล่าสุด (THB)</div></div>
+          <div class="stat-card"><div class="val" id="u-unique-users">—</div><div class="lbl">ผู้ใช้ทั้งหมด</div></div>
+          <div class="stat-card"><div class="val" id="u-avg-tokens">—</div><div class="lbl">Avg Tokens/Call</div></div>
+          <div class="stat-card"><div class="val" id="u-total-usd">—</div><div class="lbl">Total Cost (USD)</div></div>
+        </div>
+
+        <!-- ราคาอ้างอิง -->
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:.82rem;color:#1e40af">
+          💡 <strong>Claude Haiku</strong> ราคา: Input $0.80/1M tokens · Output $4.00/1M tokens · อัตราแลกเปลี่ยน 35 THB/USD
+        </div>
+
+        <!-- รายวัน -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <h3>📅 การใช้งานรายวัน</h3>
+            <div class="controls">
+              <select class="filter-sel" id="usage-days-filter" onchange="loadUsageDaily()">
+                <option value="7">7 วัน</option>
+                <option value="30" selected>30 วัน</option>
+                <option value="90">90 วัน</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="loadUsagePage()">🔄 รีเฟรช</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>วันที่</th><th>API Calls</th><th>ผู้ใช้</th><th>Input Tokens</th><th>Output Tokens</th><th>Total Tokens</th><th>ค่าใช้จ่าย (USD)</th><th>ค่าใช้จ่าย (THB)</th></tr></thead>
+              <tbody id="usage-daily-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- รายเดือน -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><h3>📆 การใช้งานรายเดือน</h3></div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>เดือน</th><th>API Calls</th><th>ผู้ใช้</th><th>Total Tokens</th><th>ค่าใช้จ่าย (USD)</th><th>ค่าใช้จ่าย (THB)</th></tr></thead>
+              <tbody id="usage-monthly-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top users -->
+        <div class="card">
+          <div class="card-header"><h3>👥 ต้นทุนต่อผู้ใช้ (Top 20)</h3></div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>#</th><th>ผู้ใช้</th><th>API Calls</th><th>Total Tokens</th><th>ค่าใช้จ่าย (USD)</th><th>ค่าใช้จ่าย (THB)</th><th>ครั้งล่าสุด</th></tr></thead>
+              <tbody id="usage-users-body"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -488,11 +553,11 @@ document.getElementById('login-password').addEventListener('keydown', e => { if 
 // ════════════════════════════════════════════
 //  Navigation
 // ════════════════════════════════════════════
-const PAGE_TITLES = { dashboard:'📊 Dashboard', leads:'👥 Leads', settings:'⚙️ ตั้งค่า' };
+const PAGE_TITLES = { dashboard:'📊 Dashboard', leads:'👥 Leads', usage:'📈 AI Usage & Cost', settings:'⚙️ ตั้งค่า' };
 
 function showPage(name) {
   currentPageName = name;
-  ['dashboard','leads','settings'].forEach(p => {
+  ['dashboard','leads','usage','settings'].forEach(p => {
     document.getElementById('page-'+p).style.display = p===name ? 'block' : 'none';
     const nav = document.getElementById('nav-'+p);
     if (nav) nav.classList.toggle('active', p===name);
@@ -501,6 +566,7 @@ function showPage(name) {
 
   if (name === 'dashboard') loadDashboard();
   if (name === 'leads')     { currentPage=1; loadLeads(); }
+  if (name === 'usage')     loadUsagePage();
   if (name === 'settings')  loadSettings();
 }
 
@@ -697,6 +763,101 @@ async function resetChat() {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ════════════════════════════════════════════
+//  AI Usage & Cost
+// ════════════════════════════════════════════
+function fmtNum(n, dec=0) {
+  if (n === null || n === undefined) return '—';
+  return parseFloat(n).toLocaleString('th-TH', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtUSD(n) {
+  if (!n) return '$0.000000';
+  return '$' + parseFloat(n).toFixed(6);
+}
+function fmtTHB(n) {
+  if (!n) return '฿0.00';
+  return '฿' + parseFloat(n).toFixed(4);
+}
+
+async function loadUsagePage() {
+  await Promise.all([loadUsageSummary(), loadUsageDaily(), loadUsageMonthly(), loadUsageByUser()]);
+}
+
+async function loadUsageSummary() {
+  const data = await api('GET', '/usage/summary');
+  if (!data?.success) return;
+  const s = data.summary;
+  document.getElementById('u-total-calls').textContent    = fmtNum(s.total_calls);
+  document.getElementById('u-total-tokens').textContent   = fmtNum(s.total_tokens);
+  document.getElementById('u-total-usd').textContent      = fmtUSD(s.total_cost_usd);
+  document.getElementById('u-total-thb').textContent      = '฿' + fmtNum(parseFloat(s.total_cost_thb||0), 2);
+  document.getElementById('u-month-thb').textContent      = '฿' + fmtNum(parseFloat((s.this_month_cost_usd||0)*35), 2);
+  document.getElementById('u-7d-thb').textContent         = '฿' + fmtNum(parseFloat((s.last_7d_cost_usd||0)*35), 2);
+  document.getElementById('u-unique-users').textContent   = fmtNum(s.unique_users);
+  document.getElementById('u-avg-tokens').textContent     = fmtNum(s.avg_tokens_per_call, 0);
+}
+
+async function loadUsageDaily() {
+  const days = document.getElementById('usage-days-filter')?.value || 30;
+  const data = await api('GET', '/usage/daily?days='+days);
+  if (!data?.success) return;
+  const tbody = document.getElementById('usage-daily-body');
+  if (!data.daily.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">ยังไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.daily.map(d => `
+    <tr>
+      <td><strong>${d.date}</strong></td>
+      <td>${fmtNum(d.api_calls)}</td>
+      <td>${fmtNum(d.unique_users)}</td>
+      <td style="color:var(--gray);font-size:.8rem">${fmtNum(d.input_tokens)}</td>
+      <td style="color:var(--gray);font-size:.8rem">${fmtNum(d.output_tokens)}</td>
+      <td><strong>${fmtNum(d.total_tokens)}</strong></td>
+      <td style="color:var(--blue)">${fmtUSD(d.cost_usd)}</td>
+      <td style="color:var(--green);font-weight:700">${fmtTHB(d.cost_thb)}</td>
+    </tr>`).join('');
+}
+
+async function loadUsageMonthly() {
+  const data = await api('GET', '/usage/monthly');
+  if (!data?.success) return;
+  const tbody = document.getElementById('usage-monthly-body');
+  if (!data.monthly.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">ยังไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.monthly.map((m,i) => `
+    <tr>
+      <td><strong>${m.month}</strong>${i===0?' <span class="badge badge-new" style="font-size:.7rem">เดือนนี้</span>':''}</td>
+      <td>${fmtNum(m.api_calls)}</td>
+      <td>${fmtNum(m.unique_users)}</td>
+      <td><strong>${fmtNum(m.total_tokens)}</strong></td>
+      <td style="color:var(--blue)">${fmtUSD(m.cost_usd)}</td>
+      <td style="color:var(--green);font-weight:700">${fmtTHB(m.cost_thb)}</td>
+    </tr>`).join('');
+}
+
+async function loadUsageByUser() {
+  const data = await api('GET', '/usage/by-user?limit=20');
+  if (!data?.success) return;
+  const tbody = document.getElementById('usage-users-body');
+  if (!data.users.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">ยังไม่มีข้อมูล</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.users.map((u,i) => `
+    <tr>
+      <td style="color:var(--gray)">${i+1}</td>
+      <td><strong>${u.display_name||'—'}</strong><br><span style="font-size:.72rem;color:var(--gray)">${u.line_user_id||''}</span></td>
+      <td>${fmtNum(u.api_calls)}</td>
+      <td>${fmtNum(u.total_tokens)}</td>
+      <td style="color:var(--blue)">${fmtUSD(u.cost_usd)}</td>
+      <td style="color:var(--green);font-weight:700">${fmtTHB(u.cost_thb)}</td>
+      <td style="font-size:.78rem;color:var(--gray)">${fmt(u.last_call)}</td>
+    </tr>`).join('');
 }
 
 // ════════════════════════════════════════════

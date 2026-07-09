@@ -254,6 +254,15 @@ async function handleMessage(lineUserId, displayName, text) {
       timeout: 15000,
     });
     assistantText = resp.data.content[0]?.text || 'ขออภัย ไม่สามารถตอบได้ในขณะนี้';
+
+    // ── บันทึก token usage (background) ──
+    const usage = resp.data.usage;
+    if (usage) {
+      db.query(
+        'INSERT INTO api_usage_logs (line_user_id, display_name, model, input_tokens, output_tokens) VALUES ($1,$2,$3,$4,$5)',
+        [lineUserId, displayName, MODEL, usage.input_tokens || 0, usage.output_tokens || 0]
+      ).catch(e => console.error('[usage] log error:', e.message));
+    }
   } catch (e) {
     console.error('[salesBot] Claude error:', e.response?.data || e.message);
     assistantText = 'ขออภัยค่ะ ระบบขัดข้องชั่วคราว กรุณาลองใหม่หรือโทร 02-XXX-XXXX';
