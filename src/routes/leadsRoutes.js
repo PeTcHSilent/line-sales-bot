@@ -41,7 +41,28 @@ router.get('/:id', requireAuth, async (req, res) => {
 // ── PATCH /api/leads/:id ────────────────────────────────────────
 router.patch('/:id', requireAuth, async (req, res) => {
   try {
-    const lead = await salesBot.updateLead(req.params.id, req.body);
+    const updates = { ...req.body };
+    // Auto-record operator เมื่อปิดงาน
+    if (updates.status === 'closed' || updates.status === 'converted') {
+      updates.closed_by_operator_id   = req.user.id;
+      updates.closed_by_operator_name = req.user.display_name || req.user.username;
+      if (!updates.closed_at) updates.closed_at = new Date().toISOString();
+    }
+    const lead = await salesBot.updateLead(req.params.id, updates);
+    if (!lead) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, lead });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── POST /api/leads/:id/claim — พนักงานรับงาน ──────────────────
+router.post('/:id/claim', requireAuth, async (req, res) => {
+  try {
+    const lead = await salesBot.updateLead(req.params.id, {
+      assigned_operator_id:   req.user.id,
+      assigned_operator_name: req.user.display_name || req.user.username,
+    });
     if (!lead) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, lead });
   } catch (e) {

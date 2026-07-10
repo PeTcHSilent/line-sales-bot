@@ -455,6 +455,11 @@
         </div>
       </div>
 
+      <!-- Operator tracking -->
+      <div id="f-operator-info" style="margin:8px 0 4px;padding:9px 14px;background:#f0f9ff;border-radius:8px;font-size:.82rem;color:var(--text2);border:1px solid #bae6fd">
+        ⭕ ยังไม่มีผู้รับงาน
+      </div>
+
       <!-- Chat history -->
       <div style="margin-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -698,6 +703,12 @@ async function loadLeads() {
       <td>${customerTypeBadge(l.customer_type)}</td>
       <td>${interestBadge(l.interest_level)}</td>
       <td>${statusBadge(l.status)}</td>
+      <td style="font-size:.78rem">
+        ${l.assigned_operator_name
+          ? `<span style="color:var(--blue);font-weight:600">🙋 ${l.assigned_operator_name}</span>${l.closed_by_operator_name?`<br><span style="color:var(--green);font-size:.72rem">✅ ปิดโดย: ${l.closed_by_operator_name}</span>`:''}`
+          : `<button class="btn btn-ghost btn-sm" onclick="claimLead(${l.id})" style="background:#fef3c7;border-color:#d97706;color:#92400e">🙋 รับงาน</button>`
+        }
+      </td>
       <td style="font-size:.78rem;color:var(--gray)">${fmt(l.created_at)}</td>
       <td>
         <button class="btn btn-ghost btn-sm" onclick="openLeadModal(${l.id})">✏️ แก้ไข</button>
@@ -729,6 +740,14 @@ async function openLeadModal(id) {
   document.getElementById('f-current-insurer').value   = l.current_insurer || '';
   document.getElementById('f-policy-expiry-date').value = l.policy_expiry_date ? l.policy_expiry_date.substring(0,10) : '';
 
+  // Operator info (read-only display)
+  const opEl = document.getElementById('f-operator-info');
+  if (opEl) {
+    const opText = l.assigned_operator_name ? `🙋 ผู้รับงาน: <strong>${l.assigned_operator_name}</strong>` : '⭕ ยังไม่มีผู้รับงาน';
+    const closedText = l.closed_by_operator_name ? ` &nbsp;|&nbsp; ✅ ปิดโดย: <strong>${l.closed_by_operator_name}</strong>${l.closed_at?' ('+fmt(l.closed_at)+')':''}` : '';
+    opEl.innerHTML = opText + closedText;
+  }
+
   document.getElementById('modal-lead').classList.add('open');
   loadChatHistory();
 }
@@ -737,6 +756,16 @@ function closeLeadModal() {
   document.getElementById('modal-lead').classList.remove('open');
   currentLeadId = null;
   currentLeadLineId = null;
+}
+
+async function claimLead(id) {
+  const r = await api('POST', '/leads/'+id+'/claim', {});
+  if (r?.success) {
+    toast('รับงานสำเร็จ ✅');
+    loadLeads();
+  } else {
+    toast('เกิดข้อผิดพลาด', 'error');
+  }
 }
 
 async function saveLead() {
@@ -785,7 +814,7 @@ async function loadChatHistory() {
   }
   container.innerHTML = history.map(m => `
     <div>
-      <div class="chat-label ${m.role==='user'?'':'left'}">${m.role==='user'?'ลูกค้า':'น้องต่อ 🤖'}</div>
+      <div class="chat-label ${m.role==='user'?'':'left'}">${m.role==='user'?'ลูกค้า':'น้องต่อกัน 🐾'}</div>
       <div class="chat-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>
     </div>`).join('');
   container.scrollTop = container.scrollHeight;
