@@ -265,7 +265,7 @@
               <thead>
                 <tr>
                   <th>#</th><th>ชื่อ / LINE</th><th>เบอร์</th><th>รถ</th>
-                  <th>ประกัน</th><th>ประเภท</th><th>ความสนใจ</th><th>สถานะ</th><th>วันที่</th><th>จัดการ</th>
+                  <th>ประกัน</th><th>ประเภท</th><th>ความสนใจ</th><th>สถานะ</th><th>ผู้รับงาน</th><th>วันที่</th><th>จัดการ</th>
                 </tr>
               </thead>
               <tbody id="leads-body"></tbody>
@@ -687,7 +687,7 @@ async function loadLeads() {
 
   const tbody = document.getElementById('leads-body');
   if (!data.leads.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">ไม่พบข้อมูล</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="11">ไม่พบข้อมูล</td></tr>';
     return;
   }
   tbody.innerHTML = data.leads.map((l,i) => `
