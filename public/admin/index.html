@@ -343,12 +343,32 @@
 
       <!-- ── Settings ── -->
       <div id="page-settings" style="display:none">
-        <div class="card" style="max-width:500px">
-          <div class="card-header"><h3>⚙️ LINE User ID สำหรับรับแจ้งเตือน</h3></div>
+
+        <!-- วิธีดู LINE User ID -->
+        <div class="card" style="max-width:640px;margin-bottom:20px">
+          <div class="card-header"><h3>📱 วิธีผูก LINE ID พนักงาน</h3></div>
           <div class="card-body" style="padding:20px">
-            <p style="font-size:.85rem;color:var(--gray);margin-bottom:16px">
-              กรอก LINE User ID ของ Admin เพื่อรับการแจ้งเตือนเมื่อมี Lead ใหม่<br>
-              ดู User ID ได้จาก LINE OA Manager → Chat → คลิกผู้ใช้
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 16px;margin-bottom:12px">
+              <p style="font-weight:700;font-size:.9rem;margin-bottom:8px">🤖 วิธีง่ายที่สุด — ใช้คำสั่ง Bot</p>
+              <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
+                1. พนักงานเปิด LINE และค้นหา Official Account ของบริษัท<br>
+                2. พิมพ์ข้อความ: <strong style="background:#1e3a8a;color:#fff;padding:2px 8px;border-radius:4px;font-family:monospace">!myid</strong><br>
+                3. Bot จะตอบกลับด้วย LINE User ID ของคุณ<br>
+                4. นำ ID มากรอกในช่องด้านล่างแล้วกด "บันทึก"
+              </p>
+            </div>
+            <p style="font-size:.78rem;color:var(--gray)">
+              💡 LINE User ID มีรูปแบบ <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">U</code> ตามด้วยตัวเลขและตัวอักษร 32 หลัก เช่น <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code>
+            </p>
+          </div>
+        </div>
+
+        <!-- รายชื่อพนักงาน -->
+        <div class="card" style="max-width:640px">
+          <div class="card-header"><h3>👥 ผูก LINE ID พนักงาน</h3></div>
+          <div class="card-body" style="padding:20px">
+            <p style="font-size:.83rem;color:var(--gray);margin-bottom:16px">
+              พนักงานที่มี LINE User ID จะได้รับแจ้งเตือนเมื่อ: มี Lead ใหม่ 🔔 / ลูกค้าต่ออายุทักมา 🔄 / มีพนักงานกดรับงาน 🙋
             </p>
             <div id="admin-users-list"></div>
           </div>

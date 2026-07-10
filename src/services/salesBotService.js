@@ -80,12 +80,20 @@ const SYSTEM_PROMPT = `
 - ตอบว่า "ได้รับทราบครับ 🙏 ทีมงานได้รับแจ้งและกำลังเตรียมใบเสนอราคาต่ออายุให้โดยเร็วครับ 🧡"
 - ขอข้อมูลรถและชื่อ-เบอร์ติดต่อให้ครบ (ระบบจะแจ้งพนักงานอัตโนมัติ)
 
+== ขอบเขตการให้บริการ (STRICT) ==
+น้องต่อกันให้บริการเฉพาะ 3 เรื่องเท่านั้น:
+1. ต้อนรับและแนะนำบริษัท ต่อกัน ประกันภัย
+2. สอบถามข้อมูลลูกค้าเพื่อส่งให้ทีมงานออกใบเสนอราคา
+3. ตอบคำถามเกี่ยวกับประกันวินาศภัย/ประกันรถยนต์ เท่านั้น
+
+หากลูกค้าถามเรื่องอื่นนอกจาก 3 ข้อนี้ ให้ตอบสั้นๆ:
+"ขออภัยครับ น้องต่อกันให้บริการเฉพาะเรื่องประกันรถยนต์ครับ 🐾 มีอะไรเกี่ยวกับประกันให้น้องช่วยไหมครับ?"
+
 == สำคัญ ==
 - ใช้ "ครับ" เสมอ ไม่ใช้ "ค่ะ" หรือ "นะคะ" เด็ดขาด
 - ไม่บอกเบี้ยที่แน่นอน ให้บอกเป็น "โดยประมาณ" หรือ "ขอส่งใบเสนอราคาให้นะครับ"
-- ถ้าถามนอกเรื่อง ตอบสั้นๆ อย่างน่ารักแล้วนำกลับมาเรื่องประกัน
-- ให้ข้อมูลที่ถูกต้องและตรงไปตรงมา ไม่กดดัน
-- รักษาบุคลิก "น้องต่อกัน" ไว้ตลอดบทสนทนา ไม่ว่าลูกค้าจะพูดอะไร
+- ให้ข้อมูลที่ถูกต้องและตรงไปตรงมา ไม่กดดัน ไม่ยัดเยียด
+- รักษาบุคลิก "น้องต่อกัน" ไว้ตลอด ไม่ว่าลูกค้าจะพูดอะไร
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────
@@ -237,6 +245,79 @@ async function notifyAdminNewLead(lead) {
       )
     ));
   } catch (e) { console.error('[salesBot] notifyAdmin:', e.message); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Admin Claimed Notification — แจ้งพนักงานทุกคนเมื่อมีคนกดรับงาน
+// ─────────────────────────────────────────────────────────────────
+async function notifyAdminClaimed(lead, operatorName) {
+  try {
+    const admins = await db.query(
+      'SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE'
+    );
+    if (!admins.rows.length) return;
+
+    const customerName = lead.customer_name || lead.line_display_name || 'ลูกค้า';
+    const car = [lead.car_brand, lead.car_model, lead.car_year].filter(Boolean).join(' ') || '—';
+
+    const flex = {
+      type: 'flex',
+      altText: `🙋 ${operatorName} รับงาน ${customerName} แล้ว`,
+      contents: {
+        type: 'bubble', size: 'kilo',
+        header: {
+          type: 'box', layout: 'vertical', backgroundColor: '#059669', paddingAll: '14px',
+          contents: [
+            { type: 'text', text: '🙋 มีพนักงานรับงานแล้ว!', color: '#ffffff', weight: 'bold', size: 'md' },
+            { type: 'text', text: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }), color: '#d1fae5', size: 'xs', margin: 'xs' },
+          ],
+        },
+        body: {
+          type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '14px',
+          contents: [
+            {
+              type: 'box', layout: 'baseline', spacing: 'sm',
+              contents: [
+                { type: 'text', text: '🙋 ผู้รับงาน', color: '#6b7280', size: 'sm', flex: 4 },
+                { type: 'text', text: operatorName, weight: 'bold', size: 'sm', flex: 6, color: '#059669' },
+              ],
+            },
+            {
+              type: 'box', layout: 'baseline', spacing: 'sm',
+              contents: [
+                { type: 'text', text: '👤 ลูกค้า', color: '#6b7280', size: 'sm', flex: 4 },
+                { type: 'text', text: customerName, weight: 'bold', size: 'sm', flex: 6, wrap: true },
+              ],
+            },
+            {
+              type: 'box', layout: 'baseline', spacing: 'sm',
+              contents: [
+                { type: 'text', text: '🚗 รถ', color: '#6b7280', size: 'sm', flex: 4 },
+                { type: 'text', text: car, size: 'sm', flex: 6, wrap: true },
+              ],
+            },
+            lead.phone ? {
+              type: 'box', layout: 'baseline', spacing: 'sm',
+              contents: [
+                { type: 'text', text: '📞 เบอร์', color: '#6b7280', size: 'sm', flex: 4 },
+                { type: 'text', text: lead.phone, size: 'sm', flex: 6, color: '#1a56db' },
+              ],
+            } : null,
+          ].filter(Boolean),
+        },
+        footer: {
+          type: 'box', layout: 'vertical', paddingAll: '10px',
+          contents: [{ type: 'text', text: `${operatorName} กำลังดูแลลูกค้ารายนี้แล้วครับ`, size: 'xs', color: '#9ca3af', align: 'center', wrap: true }],
+        },
+      },
+    };
+
+    await Promise.all(admins.rows.map(r =>
+      lineClient.pushMessage({ to: r.line_user_id, messages: [flex] }).catch(e =>
+        console.error('[salesBot] push claimed notify error:', e.message)
+      )
+    ));
+  } catch (e) { console.error('[salesBot] notifyAdminClaimed:', e.message); }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -553,4 +634,5 @@ module.exports = {
   getConversationHistory,
   resetConversation,
   getStats,
+  notifyAdminClaimed,
 };

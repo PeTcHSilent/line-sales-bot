@@ -59,12 +59,18 @@ router.patch('/:id', requireAuth, async (req, res) => {
 // ── POST /api/leads/:id/claim — พนักงานรับงาน ──────────────────
 router.post('/:id/claim', requireAuth, async (req, res) => {
   try {
+    const operatorName = req.user.display_name || req.user.username;
     const lead = await salesBot.updateLead(req.params.id, {
       assigned_operator_id:   req.user.id,
-      assigned_operator_name: req.user.display_name || req.user.username,
+      assigned_operator_name: operatorName,
     });
     if (!lead) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, lead });
+
+    // แจ้งพนักงานทุกคนว่ามีคนรับงานแล้ว (background)
+    salesBot.notifyAdminClaimed(lead, operatorName).catch(e =>
+      console.error('[leadsRoutes] notifyAdminClaimed:', e.message)
+    );
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }

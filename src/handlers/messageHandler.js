@@ -29,6 +29,15 @@ async function handleText(event, client) {
     const text        = event.message?.text?.trim();
     if (!lineUserId || !text) return;
 
+    // ── คำสั่งพิเศษสำหรับพนักงาน: ดู LINE User ID ตัวเอง ──
+    if (text === '!myid' || text === '/myid') {
+      await client.replyMessage({
+        replyToken: event.replyToken,
+        messages: [{ type: 'text', text: `🆔 LINE User ID ของคุณคือ:\n\n${lineUserId}\n\nนำไปกรอกในหน้า Settings → ผูก LINE ID พนักงาน เพื่อรับแจ้งเตือน Lead ใหม่ครับ` }],
+      });
+      return;
+    }
+
     const displayName = (await client.getProfile(lineUserId).catch(() => null))?.displayName || 'ลูกค้า';
     const reply       = await salesBotService.handleMessage(lineUserId, displayName, text);
 
