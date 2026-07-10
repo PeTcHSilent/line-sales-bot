@@ -162,6 +162,44 @@ async function upsertLead(lineUserId, displayName, fields) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  Working Hours — ตรวจสอบเวลาทำงาน
+// ─────────────────────────────────────────────────────────────────
+async function isWorkingHours() {
+  try {
+    const r = await db.query("SELECT key,value FROM system_settings WHERE key IN ('work_start','work_end','work_days')");
+    const cfg = {};
+    r.rows.forEach(row => { cfg[row.key] = row.value; });
+
+    const workStart = cfg.work_start || '08:00';
+    const workEnd   = cfg.work_end   || '18:00';
+    const workDays  = (cfg.work_days || '1,2,3,4,5').split(',').map(Number);
+
+    // เวลาปัจจุบันในไทย
+    const now = new Date();
+    const bkk = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const day  = bkk.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+    const hhmm = `${String(bkk.getHours()).padStart(2,'0')}:${String(bkk.getMinutes()).padStart(2,'0')}`;
+
+    const dayOk  = workDays.includes(day);
+    const timeOk = hhmm >= workStart && hhmm < workEnd;
+    return dayOk && timeOk;
+  } catch {
+    return true; // ถ้าไม่มีตาราง → ถือว่าเป็นเวลางาน (safe default)
+  }
+}
+
+// ดึงรายการ LINE User ID ของ recipient ตาม working hours
+// ในเวลางาน → ทุกคน  |  นอกเวลางาน → เฉพาะ role='admin'
+async function getNotifyRecipients() {
+  const inHours = await isWorkingHours();
+  const query = inHours
+    ? 'SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE'
+    : "SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE AND role = 'admin'";
+  const r = await db.query(query);
+  return r.rows;
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  Admin Notification (Flex Message)
 // ─────────────────────────────────────────────────────────────────
 const INSURANCE_LABEL = {
@@ -171,10 +209,8 @@ const INSURANCE_LABEL = {
 
 async function notifyAdminNewLead(lead) {
   try {
-    const admins = await db.query(
-      'SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE'
-    );
-    if (!admins.rows.length) return;
+    const admins = await getNotifyRecipients();
+    if (!admins.length) return;
 
     const interestIcon = { hot: '🔥 ร้อนแรง', warm: '✨ ปานกลาง', cold: '❄️ เย็น' };
     const rows = [];
@@ -239,7 +275,7 @@ async function notifyAdminNewLead(lead) {
       },
     };
 
-    await Promise.all(admins.rows.map(r =>
+    await Promise.all(admins.map(r =>
       lineClient.pushMessage({ to: r.line_user_id, messages: [flex] }).catch(e =>
         console.error('[salesBot] push admin error:', e.message)
       )
@@ -252,10 +288,8 @@ async function notifyAdminNewLead(lead) {
 // ─────────────────────────────────────────────────────────────────
 async function notifyAdminClaimed(lead, operatorName) {
   try {
-    const admins = await db.query(
-      'SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE'
-    );
-    if (!admins.rows.length) return;
+    const admins = await getNotifyRecipients();
+    if (!admins.length) return;
 
     const customerName = lead.customer_name || lead.line_display_name || 'ลูกค้า';
     const car = [lead.car_brand, lead.car_model, lead.car_year].filter(Boolean).join(' ') || '—';
@@ -312,7 +346,7 @@ async function notifyAdminClaimed(lead, operatorName) {
       },
     };
 
-    await Promise.all(admins.rows.map(r =>
+    await Promise.all(admins.map(r =>
       lineClient.pushMessage({ to: r.line_user_id, messages: [flex] }).catch(e =>
         console.error('[salesBot] push claimed notify error:', e.message)
       )
@@ -325,10 +359,8 @@ async function notifyAdminClaimed(lead, operatorName) {
 // ─────────────────────────────────────────────────────────────────
 async function notifyAdminRenewal(lineUserId, displayName) {
   try {
-    const admins = await db.query(
-      'SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE'
-    );
-    if (!admins.rows.length) return;
+    const admins = await getNotifyRecipients();
+    if (!admins.length) return;
 
     const flex = {
       type: 'flex',
@@ -363,7 +395,7 @@ async function notifyAdminRenewal(lineUserId, displayName) {
       },
     };
 
-    await Promise.all(admins.rows.map(r =>
+    await Promise.all(admins.map(r =>
       lineClient.pushMessage({ to: r.line_user_id, messages: [flex] }).catch(e =>
         console.error('[salesBot] push renewal notify error:', e.message)
       )

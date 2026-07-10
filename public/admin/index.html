@@ -178,12 +178,15 @@
     <div class="nav-item" onclick="showPage('leads')" id="nav-leads">
       <span class="icon">👥</span> Leads ทั้งหมด
     </div>
+    <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
+      <span class="icon">🧑‍💼</span> ข้อมูลพนักงาน
+    </div>
     <div class="nav-section">ระบบ</div>
     <div class="nav-item" onclick="showPage('usage')" id="nav-usage">
       <span class="icon">📈</span> AI Usage & Cost
     </div>
     <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
-      <span class="icon">⚙️</span> ตั้งค่าบัญชี
+      <span class="icon">⚙️</span> ตั้งค่าระบบ
     </div>
     <div class="nav-logout">
       <div class="nav-item" onclick="doLogout()">
@@ -344,37 +347,146 @@
       <!-- ── Settings ── -->
       <div id="page-settings" style="display:none">
 
-        <!-- วิธีดู LINE User ID -->
+        <!-- ตั้งค่าเวลาแจ้งเตือน -->
         <div class="card" style="max-width:640px;margin-bottom:20px">
-          <div class="card-header"><h3>📱 วิธีผูก LINE ID พนักงาน</h3></div>
+          <div class="card-header"><h3>🕐 ตั้งค่าเวลาแจ้งเตือน LINE</h3></div>
           <div class="card-body" style="padding:20px">
-            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 16px;margin-bottom:12px">
-              <p style="font-weight:700;font-size:.9rem;margin-bottom:8px">🤖 วิธีง่ายที่สุด — ใช้คำสั่ง Bot</p>
-              <p style="font-size:.85rem;color:var(--text2);line-height:1.7">
-                1. พนักงานเปิด LINE และค้นหา Official Account ของบริษัท<br>
-                2. พิมพ์ข้อความ: <strong style="background:#1e3a8a;color:#fff;padding:2px 8px;border-radius:4px;font-family:monospace">!myid</strong><br>
-                3. Bot จะตอบกลับด้วย LINE User ID ของคุณ<br>
-                4. นำ ID มากรอกในช่องด้านล่างแล้วกด "บันทึก"
-              </p>
+            <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:.83rem;color:#92400e">
+              ⏰ <strong>ช่วงเวลางาน</strong> → แจ้งเตือนพนักงาน + Admin ทุกคน<br>
+              🌙 <strong>นอกเวลางาน</strong> → แจ้งเตือนเฉพาะ Admin
             </div>
-            <p style="font-size:.78rem;color:var(--gray)">
-              💡 LINE User ID มีรูปแบบ <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">U</code> ตามด้วยตัวเลขและตัวอักษร 32 หลัก เช่น <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code>
-            </p>
+
+            <div class="form-row">
+              <div class="field-group">
+                <label>เวลาเริ่มงาน</label>
+                <input type="time" id="s-work-start" value="08:00" />
+              </div>
+              <div class="field-group">
+                <label>เวลาเลิกงาน</label>
+                <input type="time" id="s-work-end" value="18:00" />
+              </div>
+            </div>
+
+            <div class="field-group" style="margin-bottom:16px">
+              <label>วันทำงาน</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px" id="s-work-days">
+                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;font-size:.85rem;cursor:pointer"><input type="checkbox" value="1" /> จ</label>
+                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;font-size:.85rem;cursor:pointer"><input type="checkbox" value="2" /> อ</label>
+                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;font-size:.85rem;cursor:pointer"><input type="checkbox" value="3" /> พ</label>
+                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;font-size:.85rem;cursor:pointer"><input type="checkbox" value="4" /> พฤ</label>
+                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;font-size:.85rem;cursor:pointer"><input type="checkbox" value="5" /> ศ</label>
+                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;font-size:.85rem;cursor:pointer"><input type="checkbox" value="6" /> ส</label>
+                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;font-size:.85rem;cursor:pointer"><input type="checkbox" value="0" /> อา</label>
+              </div>
+            </div>
+
+            <button class="btn btn-blue" onclick="saveNotifySettings()">💾 บันทึกการตั้งค่า</button>
           </div>
         </div>
 
-        <!-- รายชื่อพนักงาน -->
+        <!-- หมายเหตุ -->
         <div class="card" style="max-width:640px">
-          <div class="card-header"><h3>👥 ผูก LINE ID พนักงาน</h3></div>
-          <div class="card-body" style="padding:20px">
-            <p style="font-size:.83rem;color:var(--gray);margin-bottom:16px">
-              พนักงานที่มี LINE User ID จะได้รับแจ้งเตือนเมื่อ: มี Lead ใหม่ 🔔 / ลูกค้าต่ออายุทักมา 🔄 / มีพนักงานกดรับงาน 🙋
+          <div class="card-header"><h3>ℹ️ เกี่ยวกับการแจ้งเตือน</h3></div>
+          <div class="card-body" style="padding:20px;font-size:.85rem;color:var(--text2);line-height:1.8">
+            <p>🔔 <strong>Lead ใหม่</strong> — แจ้งเตือนทันทีเมื่อลูกค้าให้ข้อมูลครบ</p>
+            <p>🔄 <strong>ลูกค้าต่ออายุ</strong> — แจ้งเตือนเมื่อลูกค้าตอบรับการต่ออายุ</p>
+            <p>🙋 <strong>รับงาน</strong> — แจ้งเตือนพนักงานทุกคนเมื่อมีคนกดรับงาน</p>
+            <p style="margin-top:10px;padding:10px;background:#f3f4f6;border-radius:8px">
+              💡 จัดการข้อมูลพนักงานและ LINE ID ได้ที่เมนู <strong>🧑‍💼 ข้อมูลพนักงาน</strong>
             </p>
-            <div id="admin-users-list"></div>
           </div>
         </div>
       </div>
 
+      <!-- ── Staff ── -->
+      <div id="page-staff" style="display:none">
+
+        <!-- คำแนะนำ !myid -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><h3>📱 วิธีดู LINE User ID ของพนักงาน</h3></div>
+          <div class="card-body" style="padding:16px 20px">
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 16px;font-size:.84rem;color:var(--text2);line-height:1.8">
+              1. พนักงานเปิด LINE → ค้นหา Official Account บริษัท<br>
+              2. พิมพ์: <strong style="background:#1e3a8a;color:#fff;padding:1px 8px;border-radius:4px;font-family:monospace">!myid</strong><br>
+              3. Bot ตอบกลับ LINE User ID — นำมากรอกในช่อง LINE ID ของพนักงานคนนั้น
+            </div>
+          </div>
+        </div>
+
+        <!-- ตาราง Staff -->
+        <div class="card">
+          <div class="card-header">
+            <h3>🧑‍💼 รายชื่อพนักงาน</h3>
+            <button class="btn btn-blue btn-sm" onclick="openStaffModal(null)">➕ เพิ่มพนักงาน</button>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead>
+                <tr><th>#</th><th>ชื่อ</th><th>Username</th><th>บทบาท</th><th>LINE ID</th><th>สถานะ</th><th>จัดการ</th></tr>
+              </thead>
+              <tbody id="staff-table-body">
+                <tr class="empty-row"><td colspan="7">กำลังโหลด...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Staff Add/Edit ══ -->
+<div class="modal-overlay" id="modal-staff">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <h3 id="modal-staff-title">เพิ่มพนักงาน</h3>
+      <button class="modal-close" onclick="closeStaffModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="sf-id" value="" />
+      <div class="form-row">
+        <div class="field-group">
+          <label>ชื่อที่แสดง <span style="color:var(--red)">*</span></label>
+          <input type="text" id="sf-display-name" placeholder="เช่น คุณสมชาย" />
+        </div>
+        <div class="field-group">
+          <label>Username <span style="color:var(--red)">*</span></label>
+          <input type="text" id="sf-username" placeholder="เช่น somchai" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field-group">
+          <label id="sf-password-label">รหัสผ่าน <span style="color:var(--red)">*</span></label>
+          <input type="password" id="sf-password" placeholder="ขั้นต่ำ 6 ตัวอักษร" />
+        </div>
+        <div class="field-group">
+          <label>บทบาท</label>
+          <select id="sf-role">
+            <option value="staff">🧑‍💼 Staff — แจ้งเตือนเฉพาะเวลางาน</option>
+            <option value="admin">👑 Admin — แจ้งเตือนตลอด 24 ชม.</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="field-group">
+          <label>LINE User ID <span style="font-size:.75rem;color:var(--gray)">(ใช้คำสั่ง !myid ใน LINE)</span></label>
+          <input type="text" id="sf-line-id" placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+        </div>
+      </div>
+      <div class="form-row single" id="sf-active-row" style="display:none">
+        <div class="field-group">
+          <label>สถานะ</label>
+          <select id="sf-active">
+            <option value="true">✅ เปิดใช้งาน</option>
+            <option value="false">❌ ปิดใช้งาน</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeStaffModal()">ยกเลิก</button>
+      <button class="btn btn-blue" onclick="saveStaff()">💾 บันทึก</button>
     </div>
   </div>
 </div>
@@ -611,11 +723,11 @@ document.getElementById('login-password').addEventListener('keydown', e => { if 
 // ════════════════════════════════════════════
 //  Navigation
 // ════════════════════════════════════════════
-const PAGE_TITLES = { dashboard:'📊 Dashboard', leads:'👥 Leads', usage:'📈 AI Usage & Cost', settings:'⚙️ ตั้งค่า' };
+const PAGE_TITLES = { dashboard:'📊 Dashboard', leads:'👥 Leads', staff:'🧑‍💼 ข้อมูลพนักงาน', usage:'📈 AI Usage & Cost', settings:'⚙️ ตั้งค่าระบบ' };
 
 function showPage(name) {
   currentPageName = name;
-  ['dashboard','leads','usage','settings'].forEach(p => {
+  ['dashboard','leads','staff','usage','settings'].forEach(p => {
     document.getElementById('page-'+p).style.display = p===name ? 'block' : 'none';
     const nav = document.getElementById('nav-'+p);
     if (nav) nav.classList.toggle('active', p===name);
@@ -624,6 +736,7 @@ function showPage(name) {
 
   if (name === 'dashboard') loadDashboard();
   if (name === 'leads')     { currentPage=1; loadLeads(); }
+  if (name === 'staff')     loadStaff();
   if (name === 'usage')     loadUsagePage();
   if (name === 'settings')  loadSettings();
 }
@@ -952,89 +1065,153 @@ async function loadUsageByUser() {
 }
 
 // ════════════════════════════════════════════
-//  Settings
+//  Settings — เวลาแจ้งเตือน
 // ════════════════════════════════════════════
 async function loadSettings() {
-  const data = await api('GET', '/admin/users');
+  const data = await api('GET', '/admin/settings');
   if (!data?.success) return;
-  const container = document.getElementById('admin-users-list');
-  container.innerHTML = data.users.map(u => `
-    <div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
-
-      <!-- ชื่อผู้ใช้ -->
-      <div style="display:flex;align-items:center;margin-bottom:14px">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;margin-right:10px">
-          ${(u.display_name||u.username).charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <strong>${u.display_name||u.username}</strong>
-          <span style="font-size:.78rem;color:var(--gray);margin-left:6px">@${u.username}</span>
-          ${u.is_active ? '<span class="badge badge-contacted" style="margin-left:6px;font-size:.7rem">Active</span>' : ''}
-        </div>
-      </div>
-
-      <!-- LINE User ID -->
-      <div style="margin-bottom:14px">
-        <label style="font-size:.78rem;font-weight:600;color:var(--gray);display:block;margin-bottom:5px">📱 LINE User ID (รับแจ้งเตือน Lead ใหม่)</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="line-id-${u.id}" value="${u.line_user_id||''}" placeholder="U1234abcd..."
-                 style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem" />
-          <button class="btn btn-blue btn-sm" onclick="saveLineId(${u.id})">บันทึก</button>
-        </div>
-      </div>
-
-      <!-- Reset Password -->
-      <div style="border-top:1px solid var(--border);padding-top:14px">
-        <label style="font-size:.78rem;font-weight:600;color:var(--gray);display:block;margin-bottom:8px">🔑 เปลี่ยนรหัสผ่าน</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input type="password" id="new-pw-${u.id}" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)"
-                 style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem"
-                 onkeydown="if(event.key==='Enter') changePassword(${u.id})" />
-          <input type="password" id="confirm-pw-${u.id}" placeholder="ยืนยันรหัสผ่าน"
-                 style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:.83rem"
-                 onkeydown="if(event.key==='Enter') changePassword(${u.id})" />
-          <button class="btn btn-sm" onclick="changePassword(${u.id})"
-                  style="background:#f97316;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;white-space:nowrap">
-            บันทึกรหัสผ่าน
-          </button>
-        </div>
-        <div id="pw-msg-${u.id}" style="font-size:.75rem;margin-top:5px;display:none"></div>
-      </div>
-
-    </div>`).join('');
+  const s = data.settings;
+  if (s.work_start) document.getElementById('s-work-start').value = s.work_start;
+  if (s.work_end)   document.getElementById('s-work-end').value   = s.work_end;
+  if (s.work_days) {
+    const days = s.work_days.split(',').map(Number);
+    document.querySelectorAll('#s-work-days input[type=checkbox]').forEach(cb => {
+      cb.checked = days.includes(Number(cb.value));
+    });
+  }
 }
 
-async function saveLineId(userId) {
-  const lineId = document.getElementById('line-id-'+userId).value.trim();
-  const r = await api('PATCH', '/admin/users/'+userId+'/line', { line_user_id: lineId||null });
-  if (r?.success) toast('บันทึก LINE ID สำเร็จ ✅');
+async function saveNotifySettings() {
+  const work_start = document.getElementById('s-work-start').value;
+  const work_end   = document.getElementById('s-work-end').value;
+  const days = [];
+  document.querySelectorAll('#s-work-days input[type=checkbox]:checked').forEach(cb => days.push(cb.value));
+  const work_days = days.join(',') || '1,2,3,4,5';
+
+  const r = await api('PUT', '/admin/settings', { work_start, work_end, work_days });
+  if (r?.success) toast('บันทึกการตั้งค่าสำเร็จ ✅');
   else toast('เกิดข้อผิดพลาด', 'error');
 }
 
-async function changePassword(userId) {
-  const pw  = document.getElementById('new-pw-'+userId).value;
-  const cpw = document.getElementById('confirm-pw-'+userId).value;
-  const msg = document.getElementById('pw-msg-'+userId);
+// ════════════════════════════════════════════
+//  Staff Management
+// ════════════════════════════════════════════
+let staffList = [];
 
-  const showMsg = (text, ok) => {
-    msg.textContent = text;
-    msg.style.color = ok ? 'var(--green)' : 'var(--red,#ef4444)';
-    msg.style.display = 'block';
-    setTimeout(() => { msg.style.display = 'none'; }, 3000);
-  };
+async function loadStaff() {
+  const data = await api('GET', '/admin/users');
+  if (!data?.success) return;
+  staffList = data.users;
+  renderStaffTable(staffList);
+}
 
-  if (!pw || pw.length < 6) return showMsg('❌ รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', false);
-  if (pw !== cpw)            return showMsg('❌ รหัสผ่านไม่ตรงกัน', false);
-
-  const r = await api('PATCH', '/admin/users/'+userId+'/password', { password: pw });
-  if (r?.success) {
-    document.getElementById('new-pw-'+userId).value = '';
-    document.getElementById('confirm-pw-'+userId).value = '';
-    showMsg('✅ เปลี่ยนรหัสผ่านสำเร็จ', true);
-    toast('เปลี่ยนรหัสผ่านสำเร็จ ✅');
-  } else {
-    showMsg('❌ เกิดข้อผิดพลาด กรุณาลองใหม่', false);
+function renderStaffTable(users) {
+  const ROLE_LABEL = { admin: '<span class="badge" style="background:#fef3c7;color:#92400e">👑 Admin</span>', staff: '<span class="badge badge-new">🧑‍💼 Staff</span>' };
+  const tbody = document.getElementById('staff-table-body');
+  if (!users.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">ยังไม่มีพนักงาน</td></tr>';
+    return;
   }
+  tbody.innerHTML = users.map((u, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><strong>${u.display_name||u.username}</strong></td>
+      <td style="color:var(--gray);font-size:.82rem">@${u.username}</td>
+      <td>${ROLE_LABEL[u.role||'staff']||u.role}</td>
+      <td style="font-size:.78rem;font-family:monospace;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${u.line_user_id||''}">
+        ${u.line_user_id
+          ? `<span style="color:var(--green)">✅ ${u.line_user_id.slice(0,10)}…</span>`
+          : '<span style="color:var(--gray)">— ยังไม่ผูก</span>'}
+      </td>
+      <td>
+        ${u.is_active
+          ? '<span class="badge badge-contacted">Active</span>'
+          : '<span class="badge badge-lost">Inactive</span>'}
+      </td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openStaffModal(${u.id})">✏️ แก้ไข</button>
+        <button class="btn btn-sm" style="background:#f97316;color:#fff;border:none;cursor:pointer" onclick="openPasswordModal(${u.id},'${(u.display_name||u.username).replace(/'/g,"\\'")}')">🔑 รหัสผ่าน</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openStaffModal(userId) {
+  const isNew = !userId;
+  document.getElementById('modal-staff-title').textContent = isNew ? 'เพิ่มพนักงานใหม่' : 'แก้ไขข้อมูลพนักงาน';
+  document.getElementById('sf-id').value = userId || '';
+  document.getElementById('sf-password-label').innerHTML = isNew
+    ? 'รหัสผ่าน <span style="color:var(--red)">*</span>'
+    : 'รหัสผ่านใหม่ <span style="font-size:.73rem;color:var(--gray)">(เว้นว่างถ้าไม่เปลี่ยน)</span>';
+  document.getElementById('sf-active-row').style.display = isNew ? 'none' : '';
+
+  if (isNew) {
+    document.getElementById('sf-display-name').value = '';
+    document.getElementById('sf-username').value      = '';
+    document.getElementById('sf-password').value      = '';
+    document.getElementById('sf-role').value          = 'staff';
+    document.getElementById('sf-line-id').value       = '';
+  } else {
+    const u = staffList.find(x => x.id === userId);
+    if (!u) return;
+    document.getElementById('sf-display-name').value = u.display_name || '';
+    document.getElementById('sf-username').value      = u.username;
+    document.getElementById('sf-password').value      = '';
+    document.getElementById('sf-role').value          = u.role || 'staff';
+    document.getElementById('sf-line-id').value       = u.line_user_id || '';
+    document.getElementById('sf-active').value        = String(u.is_active !== false);
+  }
+  document.getElementById('modal-staff').classList.add('open');
+}
+
+function closeStaffModal() {
+  document.getElementById('modal-staff').classList.remove('open');
+}
+
+async function saveStaff() {
+  const userId      = document.getElementById('sf-id').value;
+  const display_name = document.getElementById('sf-display-name').value.trim();
+  const username    = document.getElementById('sf-username').value.trim();
+  const password    = document.getElementById('sf-password').value;
+  const role        = document.getElementById('sf-role').value;
+  const line_user_id = document.getElementById('sf-line-id').value.trim() || null;
+  const is_active   = document.getElementById('sf-active').value === 'true';
+
+  const isNew = !userId;
+
+  if (!display_name) return toast('กรุณากรอกชื่อที่แสดง', 'error');
+  if (isNew && (!username || !password)) return toast('กรุณากรอก Username และรหัสผ่าน', 'error');
+  if (isNew && password.length < 6) return toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+
+  let r;
+  if (isNew) {
+    r = await api('POST', '/admin/users', { username, password, display_name, role });
+    if (r?.success && line_user_id) {
+      await api('PATCH', `/admin/users/${r.user.id}`, { line_user_id });
+    }
+  } else {
+    r = await api('PATCH', `/admin/users/${userId}`, { display_name, role, is_active, line_user_id });
+    if (r?.success && password && password.length >= 6) {
+      await api('PATCH', `/admin/users/${userId}/password`, { password });
+    }
+  }
+
+  if (r?.success) {
+    toast(isNew ? 'เพิ่มพนักงานสำเร็จ ✅' : 'บันทึกสำเร็จ ✅');
+    closeStaffModal();
+    loadStaff();
+  } else {
+    toast(r?.error || 'เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+// Password-change shortcut (staff table "🔑 รหัสผ่าน" button)
+async function openPasswordModal(userId, name) {
+  const pw = prompt(`เปลี่ยนรหัสผ่านสำหรับ ${name}:\n\nกรอกรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)`);
+  if (!pw) return;
+  if (pw.length < 6) return toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
+  const r = await api('PATCH', `/admin/users/${userId}/password`, { password: pw });
+  if (r?.success) toast('เปลี่ยนรหัสผ่านสำเร็จ ✅');
+  else toast('เกิดข้อผิดพลาด', 'error');
 }
 
 // ════════════════════════════════════════════
