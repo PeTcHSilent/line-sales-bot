@@ -628,14 +628,14 @@ function buildWelcomeFlex(displayName) {
         type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '16px',
         contents: [
           { type: 'text', text: `สวัสดีคุณ${displayName} 👋`, weight: 'bold', size: 'md' },
-          { type: 'text', text: 'น้องต่อพร้อมดูแลคุณ 24 ชั่วโมง\nเพียงแจ้งข้อมูลรถ รับใบเสนอราคาทันที!', wrap: true, size: 'sm', color: '#374151', lineSpacing: '6px' },
+          { type: 'text', text: 'น้องต่อกันพร้อมดูแลคุณ 24 ชั่วโมง\nเพียงแจ้งข้อมูลรถ รับใบเสนอราคาทันที!', wrap: true, size: 'sm', color: '#374151', lineSpacing: '6px' },
           { type: 'separator', margin: 'lg' },
           {
             type: 'box', layout: 'vertical', spacing: 'xs', margin: 'md',
             contents: [
               { type: 'text', text: '✅ เปรียบเทียบราคาหลายบริษัทชั้นนำ', size: 'sm', color: '#374151' },
               { type: 'text', text: '✅ ประกันชั้น 1 / 2+ / 3+ และ พ.ร.บ.', size: 'sm', color: '#374151' },
-              { type: 'text', text: '✅ รับกรมธรรม์ภายใน 1-3 วันทำการ', size: 'sm', color: '#374151' },
+              { type: 'text', text: '✅ รับกรมธรรม์ภายใน 14 วันทำการ', size: 'sm', color: '#374151' },
               { type: 'text', text: '✅ ทีมงานดูแลตลอดอายุกรมธรรม์', size: 'sm', color: '#374151' },
             ],
           },
