@@ -51,7 +51,7 @@ async function syncEmployees() {
       INSERT INTO admin_users
         (username, password_hash, display_name, line_user_id, hr_employee_code, department, role, is_active)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      ON CONFLICT (hr_employee_code) DO UPDATE SET
+      ON CONFLICT (hr_employee_code) WHERE hr_employee_code IS NOT NULL DO UPDATE SET
         display_name      = EXCLUDED.display_name,
         line_user_id      = CASE
                               WHEN admin_users.line_user_id IS NOT NULL THEN admin_users.line_user_id
