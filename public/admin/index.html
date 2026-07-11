@@ -1120,10 +1120,13 @@ async function runHrSync() {
   if (data?.success) {
     const emp = data.employees;
     const hol = data.holidays;
-    resultEl.innerHTML = `<div style="background:#d1fae5;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#065f46">
-      ✅ Sync สำเร็จ!<br>
-      🧑‍💼 พนักงาน: sync ${emp?.synced || 0} คน<br>
-      📅 วันหยุด: sync ${hol?.synced || 0} วัน
+    const errMsg = data.error ? `<br>⚠️ Error: ${data.error}` : '';
+    const bg = data.error ? '#fef9c3' : '#d1fae5';
+    const col = data.error ? '#713f12' : '#065f46';
+    resultEl.innerHTML = `<div style="background:${bg};border-radius:8px;padding:10px 14px;font-size:.82rem;color:${col}">
+      ${data.error ? '⚠️' : '✅'} Sync ${data.error ? 'มีข้อผิดพลาดบางส่วน' : 'สำเร็จ!'}<br>
+      🧑‍💼 พนักงาน: sync ${emp?.synced ?? (emp === null ? '❌ error' : 0)} คน<br>
+      📅 วันหยุด: sync ${hol?.synced ?? (hol === null ? '❌ error' : 0)} วัน${errMsg}
     </div>`;
     document.getElementById('sync-last-at').textContent = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
     document.getElementById('sync-last-at').style.color = 'var(--green)';
