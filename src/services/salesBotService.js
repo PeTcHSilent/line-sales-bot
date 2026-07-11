@@ -414,6 +414,71 @@ async function notifyAdminRenewal(lineUserId, displayName) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  Out-of-Scope Notification — แจ้งพนักงานเมื่อลูกค้าถามนอกขอบเขต
+// ─────────────────────────────────────────────────────────────────
+// ตรวจว่า bot ตอบว่า "ให้บริการเฉพาะเรื่องประกันรถยนต์" = out-of-scope
+const OUT_OF_SCOPE_PATTERN = /ให้บริการเฉพาะเรื่องประกัน|นอกเหนือจากขอบเขต|ไม่ใช่เรื่องประกัน/i;
+
+async function notifyAdminOutOfScope(lineUserId, displayName, customerMessage) {
+  try {
+    const admins = await getNotifyRecipients();
+    if (!admins.length) return;
+
+    // ตัดข้อความลูกค้าถ้ายาวเกิน 100 ตัวอักษร
+    const msgPreview = customerMessage.length > 100
+      ? customerMessage.slice(0, 97) + '...'
+      : customerMessage;
+
+    const flex = {
+      type: 'flex',
+      altText: `❓ ${displayName} ถามนอกขอบเขต: ${msgPreview}`,
+      contents: {
+        type: 'bubble', size: 'kilo',
+        header: {
+          type: 'box', layout: 'vertical', backgroundColor: '#7c3aed', paddingAll: '14px',
+          contents: [
+            { type: 'text', text: '❓ ลูกค้าถามนอกขอบเขต', color: '#ffffff', weight: 'bold', size: 'md' },
+            { type: 'text', text: new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }), color: '#ede9fe', size: 'xs', margin: 'xs' },
+          ],
+        },
+        body: {
+          type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '14px',
+          contents: [
+            {
+              type: 'box', layout: 'baseline', spacing: 'sm',
+              contents: [
+                { type: 'text', text: '👤 ลูกค้า', color: '#6b7280', size: 'sm', flex: 3 },
+                { type: 'text', text: displayName, weight: 'bold', size: 'sm', flex: 7, wrap: true },
+              ],
+            },
+            { type: 'separator', margin: 'sm' },
+            { type: 'text', text: '💬 ข้อความที่ถาม:', color: '#6b7280', size: 'xs', margin: 'sm' },
+            {
+              type: 'box', layout: 'vertical', backgroundColor: '#f5f3ff', cornerRadius: '6px', paddingAll: '10px', margin: 'xs',
+              contents: [
+                { type: 'text', text: msgPreview, size: 'sm', color: '#374151', wrap: true },
+              ],
+            },
+            { type: 'separator', margin: 'sm' },
+            { type: 'text', text: '📌 bot ตอบว่าไม่ใช่ขอบเขต — กรุณาติดต่อลูกค้าโดยตรงถ้าสามารถช่วยได้', size: 'xs', color: '#7c3aed', wrap: true, margin: 'sm' },
+          ],
+        },
+        footer: {
+          type: 'box', layout: 'vertical', paddingAll: '10px',
+          contents: [{ type: 'text', text: '→ เปิด Admin Panel เพื่อดูประวัติสนทนา', size: 'xs', color: '#9ca3af', align: 'center' }],
+        },
+      },
+    };
+
+    await Promise.all(admins.map(r =>
+      lineClient.pushMessage({ to: r.line_user_id, messages: [flex] }).catch(e =>
+        console.error('[salesBot] push out-of-scope notify error:', e.message)
+      )
+    ));
+  } catch (e) { console.error('[salesBot] notifyAdminOutOfScope:', e.message); }
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  Auto-extract lead fields จากบทสนทนา
 // ─────────────────────────────────────────────────────────────────
 async function extractLeadFields(history) {
@@ -517,6 +582,11 @@ async function handleMessage(lineUserId, displayName, text) {
           notifyAdminRenewal(lineUserId, displayName).catch(() => {});
         }
       }).catch(() => {});
+  }
+
+  // ── Out-of-scope detection — แจ้งพนักงานเมื่อลูกค้าถามนอกขอบเขต ──
+  if (OUT_OF_SCOPE_PATTERN.test(assistantText)) {
+    notifyAdminOutOfScope(lineUserId, displayName, text).catch(() => {});
   }
 
   // ── Auto-extract ทุก 4 ข้อความ (หรือเมื่อ capture lead) ──
