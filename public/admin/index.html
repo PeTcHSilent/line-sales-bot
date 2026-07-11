@@ -384,6 +384,26 @@
           </div>
         </div>
 
+        <!-- Sync จาก HR -->
+        <div class="card" style="max-width:640px;margin-bottom:20px">
+          <div class="card-header">
+            <h3>🔗 Sync ข้อมูลจาก HR System</h3>
+            <button class="btn btn-blue btn-sm" onclick="runHrSync()" id="btn-sync">🔄 Sync ทันที</button>
+          </div>
+          <div class="card-body" style="padding:16px 20px;font-size:.84rem;color:var(--text2)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <span>⏱️ Sync ล่าสุด:</span>
+              <span id="sync-last-at" style="color:var(--gray)">กำลังตรวจสอบ...</span>
+            </div>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;font-size:.82rem;line-height:1.8">
+              🧑‍💼 พนักงานแผนก <strong>Sales</strong> + <strong>Admin</strong> จาก HR จะถูก sync มาที่หน้าข้อมูลพนักงานอัตโนมัติ<br>
+              📅 วันหยุดนักขัตฤกษ์จาก HR Calendar จะถูก sync มาใช้กับการแจ้งเตือน<br>
+              ⏰ ระบบ sync ให้อัตโนมัติทุก 6 ชั่วโมง
+            </div>
+            <div id="sync-result" style="margin-top:10px;display:none"></div>
+          </div>
+        </div>
+
         <!-- หมายเหตุ -->
         <div class="card" style="max-width:640px">
           <div class="card-header"><h3>ℹ️ เกี่ยวกับการแจ้งเตือน</h3></div>
@@ -1067,7 +1087,58 @@ async function loadUsageByUser() {
 // ════════════════════════════════════════════
 //  Settings — เวลาแจ้งเตือน
 // ════════════════════════════════════════════
+async function loadSyncStatus() {
+  const data = await api('GET', '/sync/status');
+  const el = document.getElementById('sync-last-at');
+  if (!el) return;
+  if (data?.success) {
+    if (data.last_sync_at === 'never') {
+      el.textContent = 'ยังไม่เคย sync';
+      el.style.color = 'var(--yellow)';
+    } else {
+      el.textContent = new Date(data.last_sync_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+      el.style.color = 'var(--green)';
+    }
+    if (!data.hr_url_configured) {
+      el.textContent = '⚠️ ยังไม่ได้ตั้งค่า HR_SYSTEM_URL ใน Railway';
+      el.style.color = 'var(--red)';
+    }
+  }
+}
+
+async function runHrSync() {
+  const btn = document.getElementById('btn-sync');
+  const resultEl = document.getElementById('sync-result');
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลัง Sync...';
+  resultEl.style.display = 'none';
+
+  const data = await api('POST', '/sync/run');
+  btn.disabled = false;
+  btn.textContent = '🔄 Sync ทันที';
+
+  if (data?.success) {
+    const emp = data.employees;
+    const hol = data.holidays;
+    resultEl.innerHTML = `<div style="background:#d1fae5;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#065f46">
+      ✅ Sync สำเร็จ!<br>
+      🧑‍💼 พนักงาน: sync ${emp?.synced || 0} คน<br>
+      📅 วันหยุด: sync ${hol?.synced || 0} วัน
+    </div>`;
+    document.getElementById('sync-last-at').textContent = new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+    document.getElementById('sync-last-at').style.color = 'var(--green)';
+    loadStaff(); // refresh staff table
+  } else {
+    resultEl.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#991b1b">
+      ❌ Sync ไม่สำเร็จ: ${data?.error || 'Unknown error'}<br>
+      กรุณาตรวจสอบ HR_SYSTEM_URL และ HR_SYNC_SECRET ใน Railway
+    </div>`;
+  }
+  resultEl.style.display = 'block';
+}
+
 async function loadSettings() {
+  loadSyncStatus();
   const data = await api('GET', '/admin/settings');
   if (!data?.success) return;
   const s = data.settings;

@@ -182,19 +182,29 @@ async function isWorkingHours() {
 
     const dayOk  = workDays.includes(day);
     const timeOk = hhmm >= workStart && hhmm < workEnd;
-    return dayOk && timeOk;
+    if (!dayOk || !timeOk) return false;
+
+    // ตรวจสอบวันหยุดนักขัตฤกษ์ จาก public_holidays (sync จาก HR)
+    const todayBkk = `${bkk.getFullYear()}-${String(bkk.getMonth()+1).padStart(2,'0')}-${String(bkk.getDate()).padStart(2,'0')}`;
+    const holiday  = await db.query('SELECT 1 FROM public_holidays WHERE date = $1', [todayBkk]);
+    if (holiday.rows.length) return false; // วันหยุด = นอกเวลางาน
+
+    return true;
   } catch {
-    return true; // ถ้าไม่มีตาราง → ถือว่าเป็นเวลางาน (safe default)
+    return true; // safe default
   }
 }
 
 // ดึงรายการ LINE User ID ของ recipient ตาม working hours
-// ในเวลางาน → ทุกคน  |  นอกเวลางาน → เฉพาะ role='admin'
+// ในเวลางาน: แผนก Sales + Admin | นอกเวลางาน: เฉพาะ role='admin'
 async function getNotifyRecipients() {
   const inHours = await isWorkingHours();
   const query = inHours
-    ? 'SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE'
-    : "SELECT line_user_id FROM admin_users WHERE line_user_id IS NOT NULL AND is_active = TRUE AND role = 'admin'";
+    ? `SELECT line_user_id FROM admin_users
+       WHERE line_user_id IS NOT NULL AND is_active = TRUE
+         AND (department IN ('Sales','Admin') OR role = 'admin' OR department IS NULL)`
+    : `SELECT line_user_id FROM admin_users
+       WHERE line_user_id IS NOT NULL AND is_active = TRUE AND role = 'admin'`;
   const r = await db.query(query);
   return r.rows;
 }

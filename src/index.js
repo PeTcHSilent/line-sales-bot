@@ -7,6 +7,8 @@ const webhookRoutes = require('./routes/webhookRoutes');
 const leadsRoutes   = require('./routes/leadsRoutes');
 const adminRoutes   = require('./routes/adminRoutes');
 const usageRoutes   = require('./routes/usageRoutes');
+const syncRoutes    = require('./routes/syncRoutes');
+const hrSync        = require('./services/hrSyncService');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -24,6 +26,7 @@ app.use('/', webhookRoutes);
 app.use('/api/leads',  leadsRoutes);
 app.use('/api/admin',  adminRoutes);
 app.use('/api/usage',  usageRoutes);
+app.use('/api/sync',   syncRoutes);
 
 // ── Admin Panel SPA
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
@@ -38,6 +41,7 @@ app.get('/', (_req, res) => res.json({ name: 'LINE Sales Bot', status: 'running'
 app.listen(PORT, () => {
   console.log(`[server] LINE Sales Bot running on port ${PORT}`);
   console.log(`[server] Admin panel: http://localhost:${PORT}/admin`);
+  hrSync.startAutoSync(); // sync พนักงาน + วันหยุด จาก HR ทุก 6 ชั่วโมง
 });
 
 module.exports = app;
