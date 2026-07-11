@@ -1158,7 +1158,12 @@ async function testNotify() {
     return;
   }
   const rows = (data.results || []).map(r =>
-    `<tr><td style="padding:3px 8px">${r.display_name}</td><td style="color:${r.status==='sent'?'#065f46':'#991b1b'}">${r.status==='sent'?'✅ ส่งแล้ว':'❌ '+r.error}</td></tr>`
+    `<tr>
+      <td style="padding:3px 8px">${r.display_name}</td>
+      <td style="color:${r.status==='sent'?'#065f46':'#991b1b'};padding:3px 8px">${r.status==='sent'?'✅ ส่งแล้ว':'❌ '+r.error}</td>
+      <td style="padding:3px 8px;font-size:.72rem;color:#6b7280">${r.id_format||''}</td>
+      <td style="padding:3px 8px;font-size:.7rem;color:#9ca3af;font-family:monospace">${r.line_api_error?JSON.stringify(r.line_api_error):''}</td>
+    </tr>`
   ).join('');
   resultEl.innerHTML = `<div style="background:#d1fae5;border-radius:8px;padding:12px 14px;font-size:.82rem;color:#065f46">
     ✅ ส่ง test notification ไปแล้ว ${data.sent_to} คน<br><br>

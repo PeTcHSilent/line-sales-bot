@@ -199,14 +199,27 @@ router.post('/test-notify', requireAuth, async (req, res) => {
 
     const results = [];
     for (const r of recipients.rows) {
+      // ตรวจ format ก่อน: LINE user ID ต้องขึ้นต้นด้วย U ตามด้วย 32 hex chars (33 chars รวม)
+      const idFormat = r.line_user_id
+        ? (r.line_user_id.match(/^U[0-9a-f]{32}$/) ? '✅ valid' : `⚠️ รูปแบบผิด (${r.line_user_id.length} chars, ขึ้นต้น "${r.line_user_id.slice(0,4)}")`)
+        : '❌ null';
       try {
         await lineClient.pushMessage({
           to: r.line_user_id,
           messages: [{ type: 'text', text: `🔔 ทดสอบการแจ้งเตือน Sales Bot\nผู้รับ: ${r.display_name}\nเวลา: ${hhmm} (${inHours ? 'ในเวลางาน' : 'นอกเวลางาน'})\n✅ ระบบแจ้งเตือนทำงานปกติ` }],
         });
-        results.push({ display_name: r.display_name, status: 'sent' });
+        results.push({ display_name: r.display_name, status: 'sent', id_format: idFormat });
       } catch (e) {
-        results.push({ display_name: r.display_name, status: 'error', error: e.message });
+        // ดึง LINE API error body จริงๆ
+        const lineErr = e?.response?.data || e?.originalError?.response?.data || e?.data || null;
+        results.push({
+          display_name: r.display_name,
+          status: 'error',
+          error: e.message,
+          line_api_error: lineErr,       // body จาก LINE API เช่น {message:"...",details:[]}
+          id_format: idFormat,
+          id_preview: r.line_user_id?.slice(0, 10) + '...',
+        });
       }
     }
     res.json({ success: true, sent_to: results.length, results });
