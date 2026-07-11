@@ -388,7 +388,11 @@
         <div class="card" style="max-width:640px;margin-bottom:20px">
           <div class="card-header">
             <h3>🔗 Sync ข้อมูลจาก HR System</h3>
-            <button class="btn btn-blue btn-sm" onclick="runHrSync()" id="btn-sync">🔄 Sync ทันที</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-blue btn-sm" onclick="runHrSync()" id="btn-sync">🔄 Sync ทันที</button>
+              <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="debugNotify()">🔍 ตรวจสอบ</button>
+              <button class="btn btn-sm" style="background:#059669;color:#fff" onclick="testNotify()">📣 ทดสอบแจ้งเตือน</button>
+            </div>
           </div>
           <div class="card-body" style="padding:16px 20px;font-size:.84rem;color:var(--text2)">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -1104,6 +1108,62 @@ async function loadSyncStatus() {
       el.style.color = 'var(--red)';
     }
   }
+}
+
+async function debugNotify() {
+  const resultEl = document.getElementById('sync-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `<div style="background:#f3f4f6;border-radius:8px;padding:10px 14px;font-size:.82rem">⏳ กำลังตรวจสอบ...</div>`;
+  const data = await api('GET', '/admin/notify-debug');
+  if (!data) return;
+
+  const usersHtml = (data.all_users || []).map(u => `
+    <tr>
+      <td>${u.display_name || u.username}</td>
+      <td>${u.department || '—'}</td>
+      <td>${u.role}</td>
+      <td>${u.has_line_id ? '✅ มี' : '❌ ไม่มี'}</td>
+      <td>${u.is_active ? 'Active' : 'Inactive'}</td>
+    </tr>`).join('');
+
+  resultEl.innerHTML = `<div style="background:#ede9fe;border-radius:8px;padding:12px 14px;font-size:.82rem;color:#3b0764">
+    <strong>🔍 ผล Notify Debug</strong><br>
+    🕐 เวลา BKK: <strong>${data.bkk_time}</strong> (${data.day_of_week}) — ${data.in_working_hours ? '✅ ในเวลางาน' : '🌙 นอกเวลางาน'}<br>
+    👥 Users ทั้งหมด: ${data.total_users} | มี LINE ID: ${data.users_with_line_id} | จะได้รับ notify: <strong style="color:${data.notify_recipients_count>0?'#065f46':'#991b1b'}">${data.notify_recipients_count} คน</strong>
+    ${data.notify_recipients_count === 0 ? '<br><br>❌ <strong>ไม่มีผู้รับ!</strong> ต้องตั้ง LINE User ID ในเมนู 🧑‍💼 ข้อมูลพนักงาน' : ''}
+    <br><br>
+    <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+      <thead><tr style="background:#c4b5fd;color:#3b0764">
+        <th style="padding:4px 8px;text-align:left">ชื่อ</th>
+        <th>แผนก</th>
+        <th>Role</th>
+        <th>LINE ID</th>
+        <th>สถานะ</th>
+      </tr></thead>
+      <tbody>${usersHtml}</tbody>
+    </table>
+  </div>`;
+}
+
+async function testNotify() {
+  const resultEl = document.getElementById('sync-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `<div style="background:#f3f4f6;border-radius:8px;padding:10px 14px;font-size:.82rem">⏳ กำลังส่ง test notification...</div>`;
+  const data = await api('POST', '/admin/test-notify');
+  if (!data) return;
+  if (!data.success) {
+    resultEl.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#991b1b">
+      ❌ ${data.error || 'ไม่สามารถส่งได้'}
+    </div>`;
+    return;
+  }
+  const rows = (data.results || []).map(r =>
+    `<tr><td style="padding:3px 8px">${r.display_name}</td><td style="color:${r.status==='sent'?'#065f46':'#991b1b'}">${r.status==='sent'?'✅ ส่งแล้ว':'❌ '+r.error}</td></tr>`
+  ).join('');
+  resultEl.innerHTML = `<div style="background:#d1fae5;border-radius:8px;padding:12px 14px;font-size:.82rem;color:#065f46">
+    ✅ ส่ง test notification ไปแล้ว ${data.sent_to} คน<br><br>
+    <table style="border-collapse:collapse;font-size:.78rem"><tbody>${rows}</tbody></table>
+  </div>`;
 }
 
 async function runHrSync() {

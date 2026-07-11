@@ -122,6 +122,99 @@ router.patch('/users/:id/password', requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /api/admin/notify-debug ── ตรวจสอบ notify recipients ────
+router.get('/notify-debug', requireAuth, async (req, res) => {
+  try {
+    // ดึงทุก user พร้อม department เพื่อ debug
+    const all = await db.query(
+      'SELECT id,username,display_name,line_user_id,is_active,role,department,hr_employee_code FROM admin_users ORDER BY id'
+    );
+    // ดูว่าตอนนี้ inWorkingHours หรือไม่
+    const now = new Date();
+    const bkk = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const day  = bkk.getDay();
+    const hhmm = `${String(bkk.getHours()).padStart(2,'0')}:${String(bkk.getMinutes()).padStart(2,'0')}`;
+    const cfg = await db.query("SELECT key,value FROM system_settings WHERE key IN ('work_start','work_end','work_days')");
+    const s = {};
+    cfg.rows.forEach(r => { s[r.key] = r.value; });
+    const workDays = (s.work_days || '1,2,3,4,5').split(',').map(Number);
+    const inHours  = workDays.includes(day) && hhmm >= (s.work_start||'08:00') && hhmm < (s.work_end||'18:00');
+
+    // recipients ที่จะได้รับ notification จริง
+    const recipientsQuery = inHours
+      ? `SELECT id,username,display_name,line_user_id,department,role FROM admin_users WHERE line_user_id IS NOT NULL AND is_active=TRUE AND (department IN ('Sales','Admin') OR role='admin' OR department IS NULL)`
+      : `SELECT id,username,display_name,line_user_id,department,role FROM admin_users WHERE line_user_id IS NOT NULL AND is_active=TRUE AND role='admin'`;
+    const recipients = await db.query(recipientsQuery);
+
+    res.json({
+      bkk_time: hhmm,
+      day_of_week: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day],
+      in_working_hours: inHours,
+      work_settings: s,
+      total_users: all.rows.length,
+      users_with_line_id: all.rows.filter(r => r.line_user_id).length,
+      notify_recipients_count: recipients.rows.length,
+      all_users: all.rows.map(r => ({
+        ...r,
+        line_user_id: r.line_user_id ? r.line_user_id.slice(0,8)+'...' : null,  // ซ่อนบางส่วน
+        has_line_id: !!r.line_user_id,
+      })),
+      notify_recipients: recipients.rows.map(r => ({
+        ...r,
+        line_user_id: r.line_user_id ? r.line_user_id.slice(0,8)+'...' : null,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── POST /api/admin/test-notify ── ส่ง test notification ─────────
+router.post('/test-notify', requireAuth, async (req, res) => {
+  try {
+    const line = require('@line/bot-sdk');
+    const lineClient = new line.messagingApi.MessagingApiClient({
+      channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+    });
+
+    // recipients ปัจจุบัน
+    const now = new Date();
+    const bkk = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+    const day  = bkk.getDay();
+    const hhmm = `${String(bkk.getHours()).padStart(2,'0')}:${String(bkk.getMinutes()).padStart(2,'0')}`;
+    const cfg  = await db.query("SELECT key,value FROM system_settings WHERE key IN ('work_start','work_end','work_days')");
+    const s = {};
+    cfg.rows.forEach(r => { s[r.key] = r.value; });
+    const workDays = (s.work_days || '1,2,3,4,5').split(',').map(Number);
+    const inHours  = workDays.includes(day) && hhmm >= (s.work_start||'08:00') && hhmm < (s.work_end||'18:00');
+
+    const q = inHours
+      ? `SELECT line_user_id,display_name FROM admin_users WHERE line_user_id IS NOT NULL AND is_active=TRUE AND (department IN ('Sales','Admin') OR role='admin' OR department IS NULL)`
+      : `SELECT line_user_id,display_name FROM admin_users WHERE line_user_id IS NOT NULL AND is_active=TRUE AND role='admin'`;
+    const recipients = await db.query(q);
+
+    if (!recipients.rows.length) {
+      return res.json({ success: false, error: 'ไม่มี recipient — กรุณาตั้ง line_user_id ใน admin_users ก่อน', in_working_hours: inHours });
+    }
+
+    const results = [];
+    for (const r of recipients.rows) {
+      try {
+        await lineClient.pushMessage({
+          to: r.line_user_id,
+          messages: [{ type: 'text', text: `🔔 ทดสอบการแจ้งเตือน Sales Bot\nผู้รับ: ${r.display_name}\nเวลา: ${hhmm} (${inHours ? 'ในเวลางาน' : 'นอกเวลางาน'})\n✅ ระบบแจ้งเตือนทำงานปกติ` }],
+        });
+        results.push({ display_name: r.display_name, status: 'sent' });
+      } catch (e) {
+        results.push({ display_name: r.display_name, status: 'error', error: e.message });
+      }
+    }
+    res.json({ success: true, sent_to: results.length, results });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // ── GET /api/admin/settings ── ดึงค่าตั้งค่าระบบ ───────────────
 router.get('/settings', requireAuth, async (req, res) => {
   try {
