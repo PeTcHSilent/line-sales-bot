@@ -131,11 +131,58 @@
   .toast.info{background:#1a56db}
   @keyframes slideIn{from{transform:translateX(60px);opacity:0}to{transform:none;opacity:1}}
 
+  /* ── Unified Inbox ── */
+  .inbox-layout{display:flex;height:calc(100vh - 112px);border-radius:12px;border:1px solid var(--border);overflow:hidden;background:var(--card)}
+  .inbox-left{width:300px;min-width:240px;border-right:1px solid var(--border);display:flex;flex-direction:column;background:#fff}
+  .inbox-left-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+  .inbox-search{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:.83rem;outline:none;width:100%}
+  .inbox-search:focus{border-color:var(--blue)}
+  .inbox-filter-row{display:flex;gap:6px}
+  .inbox-filter-row select{flex:1;padding:5px 7px;border:1px solid var(--border);border-radius:7px;font-size:.78rem;outline:none;background:#fff;cursor:pointer}
+  .inbox-conv-list{flex:1;overflow-y:auto}
+  .conv-item{padding:11px 14px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background .12s;position:relative}
+  .conv-item:hover{background:#f9fafb}
+  .conv-item.active{background:var(--blue-light);border-left:3px solid var(--blue)}
+  .conv-name{font-weight:600;font-size:.86rem;display:flex;align-items:center;gap:6px}
+  .conv-last{font-size:.76rem;color:var(--gray);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+  .conv-time{font-size:.7rem;color:var(--gray);position:absolute;top:11px;right:12px}
+  .unread-badge{background:var(--red);color:#fff;border-radius:99px;font-size:.68rem;font-weight:700;padding:1px 6px;min-width:18px;text-align:center}
+
+  .ch-line{background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:99px;font-size:.68rem;font-weight:700}
+  .ch-messenger{background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:99px;font-size:.68rem;font-weight:700}
+  .mode-bot{background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:99px;font-size:.68rem;font-weight:700}
+  .mode-human{background:#d1fae5;color:#065f46;padding:1px 7px;border-radius:99px;font-size:.68rem;font-weight:700}
+  .mode-resolved{background:#f3f4f6;color:#6b7280;padding:1px 7px;border-radius:99px;font-size:.68rem;font-weight:700}
+
+  .inbox-right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .inbox-empty{display:flex;align-items:center;justify-content:center;flex:1;color:var(--gray)}
+  .inbox-chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fafafa}
+  .inbox-chat-info{display:flex;align-items:center;gap:10px}
+  .inbox-avatar{width:36px;height:36px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:1.1rem;overflow:hidden}
+  .inbox-avatar img{width:100%;height:100%;object-fit:cover}
+  .inbox-chat-name{font-weight:700;font-size:.92rem}
+  .inbox-chat-meta{display:flex;align-items:center;gap:5px;margin-top:3px}
+  .inbox-chat-actions{display:flex;gap:7px;align-items:center}
+  .inbox-messages{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:#f7f8fa}
+  .inbox-msg-wrap{display:flex;flex-direction:column;gap:2px}
+  .inbox-msg-wrap.out{align-items:flex-end}
+  .inbox-msg-wrap.in{align-items:flex-start}
+  .inbox-bubble{max-width:72%;padding:9px 14px;border-radius:14px;font-size:.85rem;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+  .inbox-bubble.in-customer{background:#fff;border:1px solid var(--border);border-bottom-left-radius:4px;color:var(--text)}
+  .inbox-bubble.out-bot{background:#e0e7ff;border-bottom-right-radius:4px;color:#1e1b4b}
+  .inbox-bubble.out-staff{background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+  .inbox-bubble-label{font-size:.7rem;color:var(--gray)}
+  .inbox-reply-box{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:#fff}
+  .inbox-reply-input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:10px;resize:none;font-family:inherit;font-size:.85rem;outline:none;max-height:120px}
+  .inbox-reply-input:focus{border-color:var(--blue)}
+  .inbox-mode-warning{padding:8px 14px;background:#fffbeb;border-top:1px solid #fcd34d;font-size:.78rem;color:#92400e;text-align:center}
+
   /* ── Responsive ── */
   @media(max-width:768px){
     .sidebar{transform:translateX(-100%)}
     .main{margin-left:0}
     .form-row{grid-template-columns:1fr}
+    .inbox-left{width:240px}
   }
 </style>
 </head>
@@ -177,6 +224,10 @@
     </div>
     <div class="nav-item" onclick="showPage('leads')" id="nav-leads">
       <span class="icon">👥</span> Leads ทั้งหมด
+    </div>
+    <div class="nav-item" onclick="showPage('inbox')" id="nav-inbox">
+      <span class="icon">💬</span> Unified Inbox
+      <span id="nav-inbox-badge" style="display:none;margin-left:auto;background:#dc2626;color:#fff;border-radius:99px;font-size:.68rem;padding:1px 6px;font-weight:700"></span>
     </div>
     <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
       <span class="icon">🧑‍💼</span> ข้อมูลพนักงาน
@@ -419,6 +470,82 @@
               💡 จัดการข้อมูลพนักงานและ LINE ID ได้ที่เมนู <strong>🧑‍💼 ข้อมูลพนักงาน</strong>
             </p>
           </div>
+        </div>
+      </div>
+
+      <!-- ── Unified Inbox ── -->
+      <div id="page-inbox" style="display:none">
+        <div class="inbox-layout">
+
+          <!-- ▌ Left: Conversation List ▌ -->
+          <div class="inbox-left">
+            <div class="inbox-left-header">
+              <input class="inbox-search" type="text" placeholder="🔍 ค้นหาชื่อ..." oninput="inboxSearch(this.value)" />
+              <div class="inbox-filter-row">
+                <select onchange="inboxFilterChannel(this.value)">
+                  <option value="">ทุก channel</option>
+                  <option value="line">LINE OA</option>
+                  <option value="messenger">Messenger</option>
+                </select>
+                <select onchange="inboxFilterMode(this.value)">
+                  <option value="">ทุก mode</option>
+                  <option value="bot">🤖 Bot</option>
+                  <option value="human">🧑 Human</option>
+                  <option value="resolved">✅ Resolved</option>
+                </select>
+              </div>
+            </div>
+            <div class="inbox-conv-list" id="inbox-conv-list">
+              <div style="padding:24px;text-align:center;color:var(--gray);font-size:.84rem">กำลังโหลด...</div>
+            </div>
+          </div>
+
+          <!-- ▌ Right: Chat Window ▌ -->
+          <div class="inbox-right" id="inbox-right">
+            <div class="inbox-empty" id="inbox-empty-state">
+              <div style="text-align:center">
+                <div style="font-size:3rem;margin-bottom:12px">💬</div>
+                <div style="font-weight:600;color:var(--text2)">เลือกการสนทนาจากรายการ</div>
+                <div style="font-size:.82rem;color:var(--gray);margin-top:6px">LINE OA และ Facebook Messenger จะรวมอยู่ที่นี่</div>
+              </div>
+            </div>
+
+            <div id="inbox-chat" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+              <!-- Chat header -->
+              <div class="inbox-chat-header">
+                <div class="inbox-chat-info">
+                  <div class="inbox-avatar" id="inbox-avatar">👤</div>
+                  <div>
+                    <div class="inbox-chat-name" id="inbox-chat-name">—</div>
+                    <div class="inbox-chat-meta">
+                      <span id="inbox-ch-badge">—</span>
+                      <span id="inbox-mode-badge">—</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="inbox-chat-actions">
+                  <button class="btn btn-sm" id="btn-takeover" onclick="inboxToggleMode()">🙋 Takeover</button>
+                  <button class="btn btn-sm" style="background:#059669;color:#fff" onclick="inboxSetResolved()">✅ ปิดงาน</button>
+                  <button class="btn btn-ghost btn-sm" onclick="inboxSetBot()">🤖 คืน Bot</button>
+                </div>
+              </div>
+
+              <!-- Messages area -->
+              <div class="inbox-messages" id="inbox-messages"></div>
+
+              <!-- Mode warning when human/resolved -->
+              <div class="inbox-mode-warning" id="inbox-mode-warning" style="display:none"></div>
+
+              <!-- Reply box -->
+              <div class="inbox-reply-box" id="inbox-reply-box">
+                <textarea class="inbox-reply-input" id="inbox-reply-input"
+                  placeholder="พิมพ์ข้อความ..." rows="2"
+                  onkeydown="inboxReplyKey(event)"></textarea>
+                <button class="btn btn-blue" onclick="inboxSendReply()" style="min-width:64px">ส่ง ›</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -747,12 +874,20 @@ document.getElementById('login-password').addEventListener('keydown', e => { if 
 // ════════════════════════════════════════════
 //  Navigation
 // ════════════════════════════════════════════
-const PAGE_TITLES = { dashboard:'📊 Dashboard', leads:'👥 Leads', staff:'🧑‍💼 ข้อมูลพนักงาน', usage:'📈 AI Usage & Cost', settings:'⚙️ ตั้งค่าระบบ' };
+const PAGE_TITLES = {
+  dashboard: '📊 Dashboard',
+  leads:     '👥 Leads ทั้งหมด',
+  inbox:     '💬 Unified Inbox',
+  staff:     '🧑‍💼 ข้อมูลพนักงาน',
+  usage:     '📈 AI Usage & Cost',
+  settings:  '⚙️ ตั้งค่าระบบ',
+};
 
 function showPage(name) {
   currentPageName = name;
-  ['dashboard','leads','staff','usage','settings'].forEach(p => {
-    document.getElementById('page-'+p).style.display = p===name ? 'block' : 'none';
+  ['dashboard','leads','inbox','staff','usage','settings'].forEach(p => {
+    const el = document.getElementById('page-'+p);
+    if (el) el.style.display = p===name ? (p==='inbox' ? 'block' : 'block') : 'none';
     const nav = document.getElementById('nav-'+p);
     if (nav) nav.classList.toggle('active', p===name);
   });
@@ -760,6 +895,7 @@ function showPage(name) {
 
   if (name === 'dashboard') loadDashboard();
   if (name === 'leads')     { currentPage=1; loadLeads(); }
+  if (name === 'inbox')     initInbox();
   if (name === 'staff')     loadStaff();
   if (name === 'usage')     loadUsagePage();
   if (name === 'settings')  loadSettings();
@@ -1351,6 +1487,279 @@ async function openPasswordModal(userId, name) {
   const r = await api('PATCH', `/admin/users/${userId}/password`, { password: pw });
   if (r?.success) toast('เปลี่ยนรหัสผ่านสำเร็จ ✅');
   else toast('เกิดข้อผิดพลาด', 'error');
+}
+
+// ════════════════════════════════════════════
+//  UNIFIED INBOX
+// ════════════════════════════════════════════
+let inboxConvs       = [];
+let inboxActiveId    = null;
+let inboxPollTimer   = null;
+let inboxLastMsgTs   = null;
+let inboxChFilter    = '';
+let inboxModeFilter  = '';
+let inboxSearchTerm  = '';
+
+function inboxSearch(v)      { inboxSearchTerm = v; loadInboxConvs(); }
+function inboxFilterChannel(v){ inboxChFilter   = v; loadInboxConvs(); }
+function inboxFilterMode(v)  { inboxModeFilter  = v; loadInboxConvs(); }
+
+async function initInbox() {
+  clearInterval(inboxPollTimer);
+  await loadInboxConvs();
+  // Poll list every 10 s
+  inboxPollTimer = setInterval(loadInboxConvs, 10000);
+}
+
+async function loadInboxConvs() {
+  let qs = '?limit=60&offset=0';
+  if (inboxChFilter)   qs += `&channel=${inboxChFilter}`;
+  if (inboxModeFilter) qs += `&mode=${inboxModeFilter}`;
+  if (inboxSearchTerm) qs += `&search=${encodeURIComponent(inboxSearchTerm)}`;
+
+  const data = await api('GET', '/inbox' + qs);
+  if (!data?.success) return;
+  inboxConvs = data.conversations || [];
+  renderInboxList();
+
+  // Update nav badge
+  const totalUnread = inboxConvs.reduce((s,c) => s + (c.unread_count||0), 0);
+  const badge = document.getElementById('nav-inbox-badge');
+  if (badge) {
+    badge.style.display = totalUnread ? 'inline' : 'none';
+    badge.textContent   = totalUnread > 99 ? '99+' : totalUnread;
+  }
+}
+
+function renderInboxList() {
+  const el = document.getElementById('inbox-conv-list');
+  if (!inboxConvs.length) {
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gray);font-size:.82rem">ยังไม่มีการสนทนา</div>';
+    return;
+  }
+  el.innerHTML = inboxConvs.map(c => {
+    const chBadge   = c.channel === 'line'
+      ? '<span class="ch-line">LINE</span>'
+      : '<span class="ch-messenger">Messenger</span>';
+    const modeBadge = c.mode === 'human'    ? '<span class="mode-human">🧑 Human</span>'
+                    : c.mode === 'resolved' ? '<span class="mode-resolved">✅ Resolved</span>'
+                    :                         '<span class="mode-bot">🤖 Bot</span>';
+    const unread = c.unread_count > 0
+      ? `<span class="unread-badge">${c.unread_count}</span>` : '';
+    const t = c.last_message_at ? fmtInbox(c.last_message_at) : '';
+    const last = c.last_message ? c.last_message.slice(0,60) : '—';
+    const active = c.id === inboxActiveId ? ' active' : '';
+    return `
+      <div class="conv-item${active}" onclick="selectConv(${c.id})">
+        <div class="conv-name">
+          ${c.display_name || '(ไม่มีชื่อ)'}
+          ${unread}
+        </div>
+        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap">${chBadge} ${modeBadge}</div>
+        <div class="conv-last">${escHtml(last)}</div>
+        <div class="conv-time">${t}</div>
+      </div>`;
+  }).join('');
+}
+
+async function selectConv(id) {
+  inboxActiveId = id;
+  inboxLastMsgTs = null;
+  renderInboxList();
+
+  const conv = inboxConvs.find(c => c.id === id);
+  if (!conv) return;
+
+  // Show chat panel
+  document.getElementById('inbox-empty-state').style.display = 'none';
+  const chatEl = document.getElementById('inbox-chat');
+  chatEl.style.display = 'flex';
+
+  // Header
+  const avatarEl = document.getElementById('inbox-avatar');
+  avatarEl.innerHTML = conv.profile_pic
+    ? `<img src="${conv.profile_pic}" />`
+    : (conv.channel === 'line' ? '💚' : '💙');
+  document.getElementById('inbox-chat-name').textContent = conv.display_name || '(ไม่มีชื่อ)';
+  document.getElementById('inbox-ch-badge').innerHTML = conv.channel === 'line'
+    ? '<span class="ch-line">LINE</span>'
+    : '<span class="ch-messenger">Messenger</span>';
+
+  updateModeUI(conv.mode);
+
+  // Load messages
+  const data = await api('GET', `/inbox/${id}/messages?limit=100`);
+  if (data?.success) {
+    renderMessages(data.messages);
+    if (data.messages.length) {
+      inboxLastMsgTs = data.messages[data.messages.length-1].created_at;
+    }
+  }
+
+  // Re-render list (clears unread badge)
+  await loadInboxConvs();
+
+  // Start polling new messages
+  clearInterval(inboxPollTimer);
+  inboxPollTimer = setInterval(pollNewMessages, 5000);
+}
+
+function updateModeUI(mode) {
+  const badgeEl    = document.getElementById('inbox-mode-badge');
+  const warningEl  = document.getElementById('inbox-mode-warning');
+  const replyBox   = document.getElementById('inbox-reply-box');
+  const takeoverBtn = document.getElementById('btn-takeover');
+
+  badgeEl.innerHTML = mode === 'human'    ? '<span class="mode-human">🧑 Human Mode</span>'
+                    : mode === 'resolved' ? '<span class="mode-resolved">✅ Resolved</span>'
+                    :                       '<span class="mode-bot">🤖 Bot Mode</span>';
+
+  if (mode === 'bot') {
+    warningEl.style.display = 'block';
+    warningEl.textContent   = '🤖 Bot กำลังตอบอัตโนมัติ — กด Takeover เพื่อตอบเอง';
+    replyBox.style.opacity  = '0.5';
+    replyBox.style.pointerEvents = 'none';
+    takeoverBtn.style.display = '';
+  } else if (mode === 'human') {
+    warningEl.style.display = 'none';
+    replyBox.style.opacity  = '1';
+    replyBox.style.pointerEvents = '';
+    takeoverBtn.style.display = 'none';
+  } else {
+    // resolved
+    warningEl.style.display = 'block';
+    warningEl.textContent   = '✅ การสนทนานี้ปิดแล้ว — กด "🤖 คืน Bot" เพื่อเปิดใหม่';
+    replyBox.style.opacity  = '0.5';
+    replyBox.style.pointerEvents = 'none';
+    takeoverBtn.style.display = '';
+  }
+}
+
+async function pollNewMessages() {
+  if (!inboxActiveId) return;
+  const since = inboxLastMsgTs || new Date(0).toISOString();
+  const data = await api('GET', `/inbox/${inboxActiveId}/poll?since=${encodeURIComponent(since)}`);
+  if (!data?.success || !data.messages.length) return;
+
+  appendMessages(data.messages);
+  inboxLastMsgTs = data.messages[data.messages.length-1].created_at;
+  loadInboxConvs(); // refresh unread counts
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('inbox-messages');
+  el.innerHTML = '';
+  if (!msgs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--gray);font-size:.82rem;padding:20px">ยังไม่มีข้อความ</div>';
+    return;
+  }
+  msgs.forEach(m => el.appendChild(buildMsgEl(m)));
+  el.scrollTop = el.scrollHeight;
+}
+
+function appendMessages(msgs) {
+  const el = document.getElementById('inbox-messages');
+  const wasBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+  msgs.forEach(m => el.appendChild(buildMsgEl(m)));
+  if (wasBottom) el.scrollTop = el.scrollHeight;
+}
+
+function buildMsgEl(m) {
+  const wrap = document.createElement('div');
+  wrap.className = `inbox-msg-wrap ${m.direction}`;
+
+  const bubbleClass = m.direction === 'in'
+    ? 'in-customer'
+    : m.sender === 'bot' ? 'out-bot' : 'out-staff';
+
+  const label = m.direction === 'out'
+    ? `<div class="inbox-bubble-label">${m.sender === 'bot' ? '🤖 น้องต่อกัน' : '🧑 ' + escHtml(m.sender_name||'พนักงาน')} · ${fmtInbox(m.created_at)}</div>`
+    : `<div class="inbox-bubble-label">${fmtInbox(m.created_at)}</div>`;
+
+  wrap.innerHTML = `${label}<div class="inbox-bubble ${bubbleClass}">${escHtml(m.content)}</div>`;
+  return wrap;
+}
+
+async function inboxToggleMode() {
+  if (!inboxActiveId) return;
+  const r = await api('PATCH', `/inbox/${inboxActiveId}/mode`, { mode: 'human' });
+  if (r?.success) {
+    toast('Takeover สำเร็จ — Bot หยุดตอบ คุณสามารถตอบได้เลย ✅', 'success');
+    updateModeUI('human');
+    // Update conv in list
+    const c = inboxConvs.find(x => x.id === inboxActiveId);
+    if (c) c.mode = 'human';
+    renderInboxList();
+  } else {
+    toast('เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+async function inboxSetResolved() {
+  if (!inboxActiveId) return;
+  const r = await api('PATCH', `/inbox/${inboxActiveId}/mode`, { mode: 'resolved' });
+  if (r?.success) {
+    toast('ปิดงานสำเร็จ ✅', 'success');
+    updateModeUI('resolved');
+    const c = inboxConvs.find(x => x.id === inboxActiveId);
+    if (c) c.mode = 'resolved';
+    renderInboxList();
+  }
+}
+
+async function inboxSetBot() {
+  if (!inboxActiveId) return;
+  const r = await api('PATCH', `/inbox/${inboxActiveId}/mode`, { mode: 'bot' });
+  if (r?.success) {
+    toast('คืน Bot mode สำเร็จ', 'info');
+    updateModeUI('bot');
+    const c = inboxConvs.find(x => x.id === inboxActiveId);
+    if (c) c.mode = 'bot';
+    renderInboxList();
+  }
+}
+
+async function inboxSendReply() {
+  if (!inboxActiveId) return;
+  const input = document.getElementById('inbox-reply-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.disabled = true;
+
+  const r = await api('POST', `/inbox/${inboxActiveId}/reply`, { text });
+  input.disabled = false;
+  if (!r?.success) {
+    toast('ส่งไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
+    input.value = text; // restore
+    return;
+  }
+  appendMessages([r.message]);
+  inboxLastMsgTs = r.message.created_at;
+  input.focus();
+}
+
+function inboxReplyKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    inboxSendReply();
+  }
+}
+
+function fmtInbox(iso) {
+  if (!iso) return '';
+  const d   = new Date(iso);
+  const now = new Date();
+  const today = now.toDateString() === d.toDateString();
+  if (today) return d.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleDateString('th-TH', { day:'2-digit', month:'short' })
+       + ' ' + d.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ════════════════════════════════════════════
