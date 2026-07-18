@@ -4,6 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
+    "preDeployCommand": "node database/migrate.js",
     "startCommand": "node src/index.js",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 30,
