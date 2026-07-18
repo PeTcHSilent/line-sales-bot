@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Bot — Staff Chat</title>
+<style>
+:root {
+  --blue:    #2563eb;
+  --blue2:   #1d4ed8;
+  --green:   #16a34a;
+  --red:     #dc2626;
+  --yellow:  #d97706;
+  --gray:    #6b7280;
+  --gray2:   #9ca3af;
+  --border:  #e5e7eb;
+  --bg:      #f3f4f6;
+  --surface: #ffffff;
+  --text:    #111827;
+  --text2:   #374151;
+  --sidebar: #1e3a5f;
+  --sidebar2:#16304f;
+  --sidebar-text: #c8d9f0;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+
+/* ── Login ── */
+#login-screen{display:flex;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)}
+.login-card{background:#fff;border-radius:16px;padding:40px 36px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo .icon{font-size:2.8rem}
+.login-logo h1{font-size:1.3rem;font-weight:700;color:var(--text);margin-top:8px}
+.login-logo p{font-size:.82rem;color:var(--gray);margin-top:4px}
+.login-card label{display:block;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:4px;margin-top:14px}
+.login-card input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;transition:border .2s}
+.login-card input:focus{border-color:var(--blue)}
+.btn-login{width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:18px;transition:background .2s}
+.btn-login:hover{background:var(--blue2)}
+.login-error{color:var(--red);font-size:.8rem;margin-top:8px;text-align:center;display:none}
+
+/* ── App layout ── */
+#app{display:none;height:100vh;flex-direction:column}
+.top-bar{background:var(--sidebar);color:#fff;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.top-bar .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1rem}
+.top-bar .brand .badge-group{font-size:.72rem;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:12px}
+.top-bar .user-info{display:flex;align-items:center;gap:12px;font-size:.82rem;color:var(--sidebar-text)}
+.btn-logout{padding:5px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;cursor:pointer;font-size:.78rem;transition:background .2s}
+.btn-logout:hover{background:rgba(255,255,255,.2)}
+
+.main-area{display:flex;flex:1;overflow:hidden}
+
+/* ── Conversation list ── */
+.conv-sidebar{width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.conv-filters{padding:12px 12px 8px;border-bottom:1px solid var(--border)}
+.search-box{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin-bottom:8px}
+.search-box input{border:none;background:transparent;outline:none;font-size:.83rem;width:100%;color:var(--text)}
+.filter-row{display:flex;gap:6px}
+.filter-row select{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:.77rem;background:#fff;color:var(--text2);cursor:pointer}
+.conv-list{flex:1;overflow-y:auto}
+.conv-item{padding:12px 14px;border-bottom:1px solid #f0f0f0;cursor:pointer;transition:background .15s;position:relative}
+.conv-item:hover{background:#f8faff}
+.conv-item.active{background:#eff6ff;border-left:3px solid var(--blue)}
+.conv-item .ci-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.conv-item .ci-name{font-weight:600;font-size:.88rem;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conv-item .ci-time{font-size:.72rem;color:var(--gray2);white-space:nowrap;flex-shrink:0}
+.conv-item .ci-preview{font-size:.78rem;color:var(--gray);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conv-item .ci-tags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.unread-dot{position:absolute;top:14px;right:14px;width:8px;height:8px;background:var(--blue);border-radius:50%}
+.empty-list{text-align:center;padding:40px 20px;color:var(--gray);font-size:.82rem}
+
+/* ── Chat panel ── */
+.chat-panel{flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0}
+.chat-header{background:var(--surface);padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+.chat-header-left{display:flex;align-items:center;gap:10px;min-width:0}
+.chat-avatar{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0}
+.chat-header-info .name{font-weight:700;font-size:.95rem;color:var(--text)}
+.chat-header-info .meta{display:flex;gap:6px;margin-top:2px;flex-wrap:wrap}
+.chat-actions{display:flex;gap:8px;flex-shrink:0}
+.btn{padding:7px 14px;border:none;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:all .2s}
+.btn-green{background:#dcfce7;color:var(--green)}
+.btn-green:hover{background:#bbf7d0}
+.btn-red{background:#fee2e2;color:var(--red)}
+.btn-red:hover{background:#fecaca}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:var(--blue2)}
+.btn-gray{background:var(--bg);color:var(--text2);border:1px solid var(--border)}
+.btn-gray:hover{background:var(--border)}
+
+/* ── Messages ── */
+.messages-area{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.inbox-msg-wrap{display:flex;flex-direction:column;max-width:72%;margin-bottom:6px}
+.inbox-msg-wrap.in{align-self:flex-start}
+.inbox-msg-wrap.out{align-self:flex-end}
+.inbox-bubble-label{font-size:.7rem;color:var(--gray);margin-bottom:3px;padding:0 4px}
+.inbox-bubble{padding:10px 14px;border-radius:14px;font-size:.87rem;line-height:1.55;word-break:break-word;white-space:pre-wrap}
+.in-customer{background:#fff;color:var(--text);border:1px solid var(--border);border-top-left-radius:4px}
+.out-staff{background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.out-bot{background:#e0e7ff;color:#3730a3;border-bottom-right-radius:4px}
+.no-chat{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--gray);font-size:.9rem;gap:8px}
+.no-chat .icon{font-size:2.5rem}
+
+/* ── Reply box ── */
+.reply-box{background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
+.reply-box textarea{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font-size:.87rem;resize:none;height:44px;max-height:120px;outline:none;font-family:inherit;transition:border .2s;overflow-y:auto}
+.reply-box textarea:focus{border-color:var(--blue)}
+.btn-send{padding:10px 18px;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:.87rem;font-weight:600;transition:background .2s;white-space:nowrap}
+.btn-send:hover{background:var(--blue2)}
+.btn-send:disabled{background:var(--gray2);cursor:not-allowed}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:600}
+.badge-line{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.badge-fb{background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe}
+.badge-new{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.badge-renewal{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.badge-bot{background:#f3f4f6;color:var(--gray);border:1px solid var(--border)}
+.badge-human{background:#fef3c7;color:#b45309;border:1px solid #fde68a}
+.badge-resolved{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.badge-assigned{background:#ede9fe;color:#6d28d9;border:1px solid #ddd6fe}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:20px;right:20px;padding:11px 18px;border-radius:10px;font-size:.85rem;font-weight:600;color:#fff;z-index:9999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:#16a34a}
+.toast.error{background:#dc2626}
+.toast.info{background:#2563eb}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  .conv-sidebar{width:100%;position:absolute;z-index:10;height:100%;left:0;top:0;transform:translateX(-100%);transition:transform .3s}
+  .conv-sidebar.open{transform:translateX(0)}
+  .chat-panel{width:100%}
+  .main-area{position:relative}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Login Screen ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">💬</div>
+      <h1>Staff Chat</h1>
+      <p>Sales Bot — ระบบแชทสำหรับพนักงาน</p>
+    </div>
+    <label>ชื่อผู้ใช้</label>
+    <input type="text" id="login-username" placeholder="username" autocomplete="username">
+    <label>รหัสผ่าน</label>
+    <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    <button class="btn-login" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-error" id="login-error">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="app" style="display:none;flex-direction:column;height:100vh">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="brand">
+      💬 Staff Chat
+      <span class="badge-group" id="group-badge">—</span>
+    </div>
+    <div class="user-info">
+      <span id="user-display">—</span>
+      <button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main-area">
+
+    <!-- Conversation list -->
+    <div class="conv-sidebar" id="conv-sidebar">
+      <div class="conv-filters">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="s-search" placeholder="ค้นหาชื่อ..." oninput="onSearchInput()">
+        </div>
+        <div class="filter-row">
+          <select id="s-mode" onchange="loadConvs()">
+            <option value="">ทุก mode</option>
+            <option value="bot">Bot</option>
+            <option value="human">Human</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          <select id="s-channel" onchange="loadConvs()">
+            <option value="">ทุก channel</option>
+            <option value="line">LINE</option>
+            <option value="messenger">Messenger</option>
+          </select>
+        </div>
+      </div>
+      <div class="conv-list" id="conv-list">
+        <div class="empty-list">กำลังโหลด...</div>
+      </div>
+    </div>
+
+    <!-- Chat panel -->
+    <div class="chat-panel">
+      <!-- No selection -->
+      <div class="no-chat" id="no-chat">
+        <div class="icon">💬</div>
+        <div>เลือกการสนทนาเพื่อเริ่มแชท</div>
+      </div>
+
+      <!-- Active chat -->
+      <div id="active-chat" style="display:none;flex-direction:column;flex:1;min-height:0">
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-avatar" id="chat-avatar">?</div>
+            <div class="chat-header-info">
+              <div class="name" id="chat-name">—</div>
+              <div class="meta" id="chat-meta"></div>
+            </div>
+          </div>
+          <div class="chat-actions" id="chat-actions"></div>
+        </div>
+
+        <div class="messages-area" id="messages-area"></div>
+
+        <div class="reply-box">
+          <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
+            oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
+          <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════
+//  State
+// ════════════════════════════════════════════
+let authToken     = localStorage.getItem('sb_staff_token') || '';
+let currentUser   = null;   // { id, username, display_name, role, job_type }
+let convs         = [];
+let activeId      = null;
+let lastMsgTs     = null;
+let pollTimer     = null;
+let renderedIds   = new Set();
+let searchTimer   = null;
+
+// ════════════════════════════════════════════
+//  API helper
+// ════════════════════════════════════════════
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  if (r.status === 401) { doLogout(); return null; }
+  return r.json();
+}
+
+// ════════════════════════════════════════════
+//  Auth
+// ════════════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) return;
+  const r = await fetch('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await r.json();
+  if (data.success) {
+    authToken = data.token;
+    localStorage.setItem('sb_staff_token', authToken);
+    startApp();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  authToken = '';
+  currentUser = null;
+  localStorage.removeItem('sb_staff_token');
+  clearInterval(pollTimer);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ════════════════════════════════════════════
+//  App init
+// ════════════════════════════════════════════
+async function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  // Get profile with job_type
+  const me = await api('GET', '/admin/me');
+  if (!me?.success) { doLogout(); return; }
+  currentUser = me.user;
+
+  document.getElementById('user-display').textContent = currentUser.display_name || currentUser.username;
+
+  // Show group badge
+  const JOB_LABEL = {
+    new_business: '🆕 งานใหม่',
+    renewal:      '🔄 ต่ออายุ',
+    both:         '🔀 ทุกกลุ่ม',
+  };
+  document.getElementById('group-badge').textContent = JOB_LABEL[currentUser.job_type] || currentUser.job_type || '—';
+
+  await loadConvs();
+
+  // Poll every 5 seconds for new messages in active conv
+  clearInterval(pollTimer);
+  pollTimer = setInterval(pollMessages, 5000);
+
+  // Refresh conv list every 15 seconds
+  setInterval(loadConvs, 15000);
+}
+
+// ════════════════════════════════════════════
+//  Conversation list
+// ════════════════════════════════════════════
+function getLeadTypeFilter() {
+  if (!currentUser) return '';
+  if (currentUser.job_type === 'new_business') return 'new';
+  if (currentUser.job_type === 'renewal')      return 'renewal';
+  return ''; // 'both' or admin → show all
+}
+
+async function loadConvs() {
+  const mode    = document.getElementById('s-mode')?.value    || '';
+  const channel = document.getElementById('s-channel')?.value || '';
+  const search  = document.getElementById('s-search')?.value  || '';
+
+  const lt = getLeadTypeFilter();
+
+  const params = new URLSearchParams();
+  if (mode)    params.set('mode',    mode);
+  if (channel) params.set('channel', channel);
+  if (search)  params.set('search',  search);
+  if (lt)      params.set('lead_type', lt);
+
+  const data = await api('GET', '/inbox?' + params.toString());
+  if (!data?.success) return;
+
+  convs = data.conversations || [];
+  renderConvList();
+}
+
+function renderConvList() {
+  const el = document.getElementById('conv-list');
+  if (!convs.length) {
+    el.innerHTML = '<div class="empty-list">ยังไม่มีการสนทนา<br><small>ลูกค้าของคุณจะปรากฏที่นี่</small></div>';
+    return;
+  }
+  el.innerHTML = '';
+  convs.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'conv-item' + (c.id === activeId ? ' active' : '');
+    div.onclick = () => openConv(c.id);
+
+    const ch = c.channel === 'line'
+      ? '<span class="badge badge-line">LINE</span>'
+      : '<span class="badge badge-fb">Messenger</span>';
+    const lt = c.lead_type === 'renewal'
+      ? '<span class="badge badge-renewal">🔄 ต่ออายุ</span>'
+      : '<span class="badge badge-new">🆕 ใหม่</span>';
+    const modeB = c.mode === 'human'
+      ? '<span class="badge badge-human">🧑 Human</span>'
+      : c.mode === 'resolved'
+      ? '<span class="badge badge-resolved">✅ Resolved</span>'
+      : '<span class="badge badge-bot">🤖 Bot</span>';
+
+    const unread = c.unread_count > 0 ? '<div class="unread-dot"></div>' : '';
+    const assignedTag = c.assigned_name ? `<span class="badge badge-assigned">👤 ${escHtml(c.assigned_name)}</span>` : '';
+
+    div.innerHTML = `
+      ${unread}
+      <div class="ci-header">
+        <div class="ci-name">${escHtml(c.display_name || 'ไม่ทราบชื่อ')}</div>
+        <div class="ci-time">${fmtTime(c.last_message_at)}</div>
+      </div>
+      <div class="ci-preview">${escHtml(c.last_message || '—')}</div>
+      <div class="ci-tags">${ch}${lt}${modeB}${assignedTag}</div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(loadConvs, 400);
+}
+
+// ════════════════════════════════════════════
+//  Open conversation
+// ════════════════════════════════════════════
+async function openConv(id) {
+  activeId = id;
+  lastMsgTs = null;
+  renderedIds.clear();
+
+  // Highlight in list
+  document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.conv-item').forEach(el => {
+    if (convs.find(c => c.id === id) && el.onclick.toString().includes(id)) {
+      el.classList.add('active');
+    }
+  });
+  renderConvList(); // re-render with active highlight
+
+  // Show chat
+  document.getElementById('no-chat').style.display = 'none';
+  const ac = document.getElementById('active-chat');
+  ac.style.display = 'flex';
+
+  // Load conversation info
+  const conv = convs.find(c => c.id === id);
+  if (conv) updateChatHeader(conv);
+
+  // Load messages
+  const data = await api('GET', `/inbox/${id}/messages`);
+  if (data?.success) renderMessages(data.messages);
+}
+
+function updateChatHeader(conv) {
+  const name = conv.display_name || 'ไม่ทราบชื่อ';
+  const initial = (name[0] || '?').toUpperCase();
+
+  document.getElementById('chat-avatar').textContent = initial;
+  document.getElementById('chat-name').textContent = name;
+
+  const ch = conv.channel === 'line'
+    ? '<span class="badge badge-line">LINE</span>'
+    : '<span class="badge badge-fb">Messenger</span>';
+  const lt = conv.lead_type === 'renewal'
+    ? '<span class="badge badge-renewal">🔄 ต่ออายุ</span>'
+    : '<span class="badge badge-new">🆕 ใหม่</span>';
+  const modeB = conv.mode === 'human'
+    ? '<span class="badge badge-human">🧑 Human Mode</span>'
+    : conv.mode === 'resolved'
+    ? '<span class="badge badge-resolved">✅ Resolved</span>'
+    : '<span class="badge badge-bot">🤖 Bot Mode</span>';
+
+  document.getElementById('chat-meta').innerHTML = ch + lt + modeB;
+
+  // Action buttons based on mode
+  const acts = document.getElementById('chat-actions');
+  if (conv.mode === 'bot') {
+    acts.innerHTML = `
+      <button class="btn btn-green" onclick="setMode('human')">🙋 Takeover</button>
+    `;
+  } else if (conv.mode === 'human') {
+    acts.innerHTML = `
+      <button class="btn btn-red" onclick="setMode('resolved')">✅ ปิดงาน</button>
+      <button class="btn btn-gray" onclick="setMode('bot')">🤖 คืน Bot</button>
+    `;
+  } else {
+    acts.innerHTML = `
+      <button class="btn btn-gray" onclick="setMode('bot')">🔄 เปิดใหม่</button>
+    `;
+  }
+}
+
+// ════════════════════════════════════════════
+//  Messages
+// ════════════════════════════════════════════
+function renderMessages(msgs) {
+  const el = document.getElementById('messages-area');
+  el.innerHTML = '';
+  renderedIds.clear();
+  if (!msgs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--gray);font-size:.82rem;padding:20px">ยังไม่มีข้อความ</div>';
+    return;
+  }
+  msgs.forEach(m => {
+    renderedIds.add(m.id);
+    el.appendChild(buildMsgEl(m));
+  });
+  if (msgs.length) lastMsgTs = msgs[msgs.length - 1].created_at;
+  el.scrollTop = el.scrollHeight;
+}
+
+function appendMessages(msgs) {
+  const el = document.getElementById('messages-area');
+  const wasBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  msgs.forEach(m => {
+    if (renderedIds.has(m.id)) return;
+    renderedIds.add(m.id);
+    el.appendChild(buildMsgEl(m));
+  });
+  if (wasBottom) el.scrollTop = el.scrollHeight;
+}
+
+function buildMsgEl(m) {
+  const wrap = document.createElement('div');
+  wrap.className = 'inbox-msg-wrap ' + m.direction;
+
+  const bubbleClass = m.direction === 'in'
+    ? 'in-customer'
+    : m.sender === 'bot' ? 'out-bot' : 'out-staff';
+
+  const senderLabel = m.direction === 'in'
+    ? fmtTime(m.created_at)
+    : `${m.sender === 'bot' ? '🤖 AI' : '🧑 ' + escHtml(m.sender_name || 'พนักงาน')} · ${fmtTime(m.created_at)}`;
+
+  wrap.innerHTML = `
+    <div class="inbox-bubble-label">${senderLabel}</div>
+    <div class="inbox-bubble ${bubbleClass}">${escHtml(m.content)}</div>
+  `;
+  return wrap;
+}
+
+// ════════════════════════════════════════════
+//  Poll
+// ════════════════════════════════════════════
+async function pollMessages() {
+  if (!activeId) return;
+  const since = lastMsgTs || new Date(0).toISOString();
+  const data = await api('GET', `/inbox/${activeId}/poll?since=${encodeURIComponent(since)}`);
+  if (!data?.success || !data.messages.length) return;
+  appendMessages(data.messages);
+  lastMsgTs = data.messages[data.messages.length - 1].created_at;
+  loadConvs();
+}
+
+// ════════════════════════════════════════════
+//  Send reply
+// ════════════════════════════════════════════
+async function sendReply() {
+  if (!activeId) return;
+  const input = document.getElementById('reply-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = '44px';
+  input.disabled = true;
+  document.getElementById('btn-send').disabled = true;
+
+  // Pre-advance timestamp to prevent race condition
+  const savedTs = lastMsgTs;
+  lastMsgTs = new Date().toISOString();
+
+  const r = await api('POST', `/inbox/${activeId}/reply`, { text });
+  input.disabled = false;
+  document.getElementById('btn-send').disabled = false;
+
+  if (!r?.success) {
+    toast('ส่งไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
+    input.value = text;
+    lastMsgTs = savedTs;
+    return;
+  }
+  appendMessages([r.message]);
+  lastMsgTs = r.message.created_at;
+  input.focus();
+}
+
+function replyKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendReply();
+  }
+}
+
+function autoGrow(el) {
+  el.style.height = '44px';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ════════════════════════════════════════════
+//  Mode
+// ════════════════════════════════════════════
+async function setMode(mode) {
+  if (!activeId) return;
+  const r = await api('PATCH', `/inbox/${activeId}/mode`, { mode });
+  if (r?.success) {
+    const conv = convs.find(c => c.id === activeId);
+    if (conv) { conv.mode = mode; updateChatHeader(conv); renderConvList(); }
+    const labels = { human: 'Takeover สำเร็จ ✅', resolved: 'ปิดงานสำเร็จ ✅', bot: 'คืน Bot mode แล้ว' };
+    toast(labels[mode] || 'อัปเดตสำเร็จ', mode === 'resolved' ? 'success' : 'info');
+  } else {
+    toast('เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+//  Utils
+// ════════════════════════════════════════════
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const today = new Date().toDateString() === d.toDateString();
+  if (today) return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }) + ' ' +
+         d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ════════════════════════════════════════════
+//  Keyboard shortcuts
+// ════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && activeId) {
+    activeId = null;
+    document.getElementById('no-chat').style.display = 'flex';
+    document.getElementById('active-chat').style.display = 'none';
+  }
+});
+
+// ════════════════════════════════════════════
+//  Auto-login
+// ════════════════════════════════════════════
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+(async () => {
+  if (authToken) {
+    const me = await api('GET', '/admin/me');
+    if (me?.success) { currentUser = me.user; startApp(); }
+    else { authToken = ''; localStorage.removeItem('sb_staff_token'); }
+  }
+})();
+</script>
+</body>
+</html>

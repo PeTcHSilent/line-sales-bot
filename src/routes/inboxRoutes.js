@@ -26,9 +26,9 @@ const getLineClient = () => new line.messagingApi.MessagingApiClient({
 // ── GET /api/inbox — list conversations ─────────────────────────
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { mode, channel, search, limit = 60, offset = 0 } = req.query;
+    const { mode, channel, search, lead_type, assigned_to, limit = 60, offset = 0 } = req.query;
     const result = await inboxService.getConversations({
-      mode, channel, search, limit: +limit, offset: +offset,
+      mode, channel, search, lead_type, assigned_to, limit: +limit, offset: +offset,
     });
     res.json({ success: true, ...result });
   } catch (e) {
@@ -125,6 +125,33 @@ router.patch('/:id/mode', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'mode must be bot, human, or resolved' });
     }
     const conv = await inboxService.setMode(+req.params.id, mode);
+    if (!conv) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, conversation: conv });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── PATCH /api/inbox/:id/lead_type — new | renewal ──────────────
+router.patch('/:id/lead_type', requireAuth, async (req, res) => {
+  try {
+    const { lead_type } = req.body;
+    if (!['new', 'renewal'].includes(lead_type)) {
+      return res.status(400).json({ success: false, error: 'lead_type must be new or renewal' });
+    }
+    const conv = await inboxService.setLeadType(+req.params.id, lead_type);
+    if (!conv) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, conversation: conv });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── PATCH /api/inbox/:id/assign — assign to staff ────────────────
+router.patch('/:id/assign', requireAuth, async (req, res) => {
+  try {
+    const { user_id } = req.body; // null = unassign
+    const conv = await inboxService.setAssignedTo(+req.params.id, user_id || null);
     if (!conv) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, conversation: conv });
   } catch (e) {

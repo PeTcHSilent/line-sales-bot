@@ -37,6 +37,12 @@ app.get('/admin/*', (_req, res) =>
   res.sendFile(path.join(__dirname, '../public/admin/index.html'))
 );
 
+// ── Staff Chat Page ───────────────────────────────────────────────
+app.use('/staff', express.static(path.join(__dirname, '../public/staff')));
+app.get('/staff/*', (_req, res) =>
+  res.sendFile(path.join(__dirname, '../public/staff/index.html'))
+);
+
 // ── Root ─────────────────────────────────────────────────────────
 app.get('/', (_req, res) => res.json({
   name:   'LINE Sales Bot',

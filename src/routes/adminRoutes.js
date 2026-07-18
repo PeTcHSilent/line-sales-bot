@@ -36,8 +36,18 @@ router.post('/login', async (req, res) => {
 });
 
 // ── GET /api/admin/me ───────────────────────────────────────────
-router.get('/me', requireAuth, (req, res) => {
-  res.json({ success: true, user: req.user });
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const r = await db.query(
+      'SELECT id,username,display_name,role,job_type FROM admin_users WHERE id=$1',
+      [req.user.id]
+    );
+    const user = r.rows[0];
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    res.json({ success: true, user });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // ── GET /api/admin/users ────────────────────────────────────────

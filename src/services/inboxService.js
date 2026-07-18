@@ -59,34 +59,45 @@ async function saveMessage(convId, direction, sender, content, senderName = null
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  List conversations (for admin panel left panel)
+//  List conversations (admin panel + staff page)
 // ─────────────────────────────────────────────────────────────────
-async function getConversations({ mode, channel, search, limit = 60, offset = 0 } = {}) {
+async function getConversations({ mode, channel, search, lead_type, assigned_to, limit = 60, offset = 0 } = {}) {
   const params = [];
   const where  = [];
 
   if (mode && mode !== 'all') {
-    params.push(mode); where.push(`mode = $${params.length}`);
+    params.push(mode); where.push(`c.mode = $${params.length}`);
   }
   if (channel) {
-    params.push(channel); where.push(`channel = $${params.length}`);
+    params.push(channel); where.push(`c.channel = $${params.length}`);
   }
   if (search) {
     params.push(`%${search}%`);
-    where.push(`display_name ILIKE $${params.length}`);
+    where.push(`c.display_name ILIKE $${params.length}`);
+  }
+  if (lead_type) {
+    params.push(lead_type); where.push(`c.lead_type = $${params.length}`);
+  }
+  if (assigned_to) {
+    params.push(+assigned_to); where.push(`c.assigned_to = $${params.length}`);
   }
 
   const whereStr = where.length ? 'WHERE ' + where.join(' AND ') : '';
-
   const countParams = [...params];
   params.push(limit, offset);
 
   const [rows, cnt] = await Promise.all([
-    db.query(
-      `SELECT * FROM inbox_conversations ${whereStr} ORDER BY last_message_at DESC LIMIT $${params.length-1} OFFSET $${params.length}`,
-      params
-    ),
-    db.query(`SELECT COUNT(*) FROM inbox_conversations ${whereStr}`, countParams),
+    db.query(`
+      SELECT c.*,
+             u.display_name AS assigned_name,
+             u.username     AS assigned_username
+      FROM inbox_conversations c
+      LEFT JOIN admin_users u ON u.id = c.assigned_to
+      ${whereStr}
+      ORDER BY c.last_message_at DESC
+      LIMIT $${params.length-1} OFFSET $${params.length}
+    `, params),
+    db.query(`SELECT COUNT(*) FROM inbox_conversations c ${whereStr}`, countParams),
   ]);
 
   return { conversations: rows.rows, total: parseInt(cnt.rows[0].count) };
@@ -127,6 +138,32 @@ async function setMode(convId, mode) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+//  Set lead_type (new | renewal)
+// ─────────────────────────────────────────────────────────────────
+async function setLeadType(convId, lead_type) {
+  const r = await db.query(`
+    UPDATE inbox_conversations
+    SET lead_type = $2, updated_at = NOW()
+    WHERE id = $1
+    RETURNING *
+  `, [convId, lead_type]);
+  return r.rows[0] || null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Assign conversation to a staff member (or null to unassign)
+// ─────────────────────────────────────────────────────────────────
+async function setAssignedTo(convId, userId) {
+  const r = await db.query(`
+    UPDATE inbox_conversations
+    SET assigned_to = $2, updated_at = NOW()
+    WHERE id = $1
+    RETURNING *
+  `, [convId, userId || null]);
+  return r.rows[0] || null;
+}
+
+// ─────────────────────────────────────────────────────────────────
 //  Mark conversation as read
 // ─────────────────────────────────────────────────────────────────
 async function markRead(convId) {
@@ -156,6 +193,8 @@ module.exports = {
   getMessages,
   getConversation,
   setMode,
+  setLeadType,
+  setAssignedTo,
   markRead,
   getMessagesSince,
 };

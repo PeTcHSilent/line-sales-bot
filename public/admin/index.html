@@ -523,6 +523,19 @@
                     <div class="inbox-chat-meta">
                       <span id="inbox-ch-badge">—</span>
                       <span id="inbox-mode-badge">—</span>
+                      <span id="inbox-lt-badge">—</span>
+                    </div>
+                    <!-- ประเภทงาน + Assign -->
+                    <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center">
+                      <select id="inbox-lt-select" onchange="inboxSetLeadType(this.value)"
+                        style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;font-size:.76rem;color:var(--text2);cursor:pointer">
+                        <option value="new">🆕 งานใหม่</option>
+                        <option value="renewal">🔄 ต่ออายุ</option>
+                      </select>
+                      <select id="inbox-assign-select" onchange="inboxAssign(this.value)"
+                        style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;font-size:.76rem;color:var(--text2);cursor:pointer;min-width:130px">
+                        <option value="">— ยังไม่ได้มอบหมาย —</option>
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -1585,6 +1598,12 @@ function renderInboxList() {
     const modeBadge = c.mode === 'human'    ? '<span class="mode-human">🧑 Human</span>'
                     : c.mode === 'resolved' ? '<span class="mode-resolved">✅ Resolved</span>'
                     :                         '<span class="mode-bot">🤖 Bot</span>';
+    const ltBadge   = c.lead_type === 'renewal'
+      ? '<span style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;padding:1px 5px;border-radius:8px;font-size:.68rem;font-weight:600">🔄 ต่ออายุ</span>'
+      : '<span style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;padding:1px 5px;border-radius:8px;font-size:.68rem;font-weight:600">🆕 ใหม่</span>';
+    const assignTag = c.assigned_name
+      ? `<span style="background:#ede9fe;color:#6d28d9;border:1px solid #ddd6fe;padding:1px 5px;border-radius:8px;font-size:.68rem;font-weight:600">👤 ${escHtml(c.assigned_name)}</span>`
+      : '';
     const unread = c.unread_count > 0
       ? `<span class="unread-badge">${c.unread_count}</span>` : '';
     const t = c.last_message_at ? fmtInbox(c.last_message_at) : '';
@@ -1593,10 +1612,10 @@ function renderInboxList() {
     return `
       <div class="conv-item${active}" onclick="selectConv(${c.id})">
         <div class="conv-name">
-          ${c.display_name || '(ไม่มีชื่อ)'}
+          ${escHtml(c.display_name || '(ไม่มีชื่อ)')}
           ${unread}
         </div>
-        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap">${chBadge} ${modeBadge}</div>
+        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap">${chBadge} ${modeBadge} ${ltBadge} ${assignTag}</div>
         <div class="conv-last">${escHtml(last)}</div>
         <div class="conv-time">${t}</div>
       </div>`;
@@ -1625,6 +1644,19 @@ async function selectConv(id) {
   document.getElementById('inbox-ch-badge').innerHTML = conv.channel === 'line'
     ? '<span class="ch-line">LINE</span>'
     : '<span class="ch-messenger">Messenger</span>';
+
+  // lead_type badge
+  const ltEl = document.getElementById('inbox-lt-badge');
+  if (ltEl) ltEl.innerHTML = conv.lead_type === 'renewal'
+    ? '<span class="mode-human">🔄 ต่ออายุ</span>'
+    : '<span class="mode-bot" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0">🆕 ใหม่</span>';
+
+  // lead_type select
+  const ltSel = document.getElementById('inbox-lt-select');
+  if (ltSel) ltSel.value = conv.lead_type || 'new';
+
+  // Load staff list for assign dropdown
+  loadStaffForAssign(conv.assigned_to);
 
   updateModeUI(conv.mode);
 
@@ -1814,6 +1846,59 @@ function fmtInbox(iso) {
 function escHtml(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════════
+//  Inbox — lead_type + assign
+// ════════════════════════════════════════════
+async function inboxSetLeadType(lead_type) {
+  if (!inboxActiveId) return;
+  const r = await api('PATCH', `/inbox/${inboxActiveId}/lead_type`, { lead_type });
+  if (r?.success) {
+    const c = inboxConvs.find(x => x.id === inboxActiveId);
+    if (c) c.lead_type = lead_type;
+    const ltEl = document.getElementById('inbox-lt-badge');
+    if (ltEl) ltEl.innerHTML = lead_type === 'renewal'
+      ? '<span class="mode-human">🔄 ต่ออายุ</span>'
+      : '<span class="mode-bot" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0">🆕 ใหม่</span>';
+    renderInboxList();
+    toast('บันทึกประเภทงานแล้ว', 'success');
+  } else {
+    toast('บันทึกไม่สำเร็จ', 'error');
+  }
+}
+
+async function inboxAssign(userId) {
+  if (!inboxActiveId) return;
+  const r = await api('PATCH', `/inbox/${inboxActiveId}/assign`, { user_id: userId ? +userId : null });
+  if (r?.success) {
+    const sel   = document.getElementById('inbox-assign-select');
+    const label = sel?.options[sel.selectedIndex]?.text || '';
+    const c = inboxConvs.find(x => x.id === inboxActiveId);
+    if (c) {
+      c.assigned_to   = userId ? +userId : null;
+      c.assigned_name = userId ? label.replace(/^👤 /, '') : null;
+    }
+    renderInboxList();
+    toast(userId ? `มอบหมายให้ ${label} แล้ว` : 'ยกเลิกการมอบหมายแล้ว', 'success');
+  } else {
+    toast('บันทึกไม่สำเร็จ', 'error');
+  }
+}
+
+async function loadStaffForAssign(currentAssignedTo) {
+  const sel = document.getElementById('inbox-assign-select');
+  if (!sel) return;
+  const data = await api('GET', '/admin/users');
+  if (!data?.success) return;
+  sel.innerHTML = '<option value="">— ยังไม่ได้มอบหมาย —</option>';
+  data.users.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = '👤 ' + (u.display_name || u.username);
+    if (u.id === currentAssignedTo) opt.selected = true;
+    sel.appendChild(opt);
+  });
 }
 
 // ════════════════════════════════════════════
