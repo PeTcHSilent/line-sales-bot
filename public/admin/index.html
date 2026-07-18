@@ -229,6 +229,9 @@
       <span class="icon">💬</span> Unified Inbox
       <span id="nav-inbox-badge" style="display:none;margin-left:auto;background:#dc2626;color:#fff;border-radius:99px;font-size:.68rem;padding:1px 6px;font-weight:700"></span>
     </div>
+    <div class="nav-item" onclick="showPage('groups')" id="nav-groups">
+      <span class="icon">🗂️</span> กลุ่มพนักงาน
+    </div>
     <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
       <span class="icon">🧑‍💼</span> ข้อมูลพนักงาน
     </div>
@@ -546,6 +549,41 @@
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- ── กลุ่มพนักงาน ── -->
+      <div id="page-groups" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <h3>🗂️ กลุ่มพนักงานตามประเภทงาน</h3>
+            <span style="font-size:.82rem;color:var(--gray)">เลือก job type ของพนักงานแต่ละคน แล้วกด บันทึก</span>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ชื่อพนักงาน</th>
+                  <th>บทบาท</th>
+                  <th>ประเภทงาน</th>
+                  <th>บันทึก</th>
+                </tr>
+              </thead>
+              <tbody id="groups-table-body">
+                <tr class="empty-row"><td colspan="5">กำลังโหลด...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-body" style="padding:14px 18px;font-size:.82rem;color:var(--text2);line-height:1.8">
+            <strong>คำอธิบาย job type:</strong><br>
+            🆕 <strong>งานใหม่</strong> (new_business) — รับแจ้งเตือนเฉพาะ Lead ลูกค้าใหม่<br>
+            🔄 <strong>ต่ออายุ</strong> (renewal) — รับแจ้งเตือนเฉพาะ Lead ต่ออายุ/ต่อประกัน<br>
+            🔀 <strong>ทั้งสองประเภท</strong> (both) — รับแจ้งเตือนทุก Lead (ค่าเริ่มต้น)
+          </div>
         </div>
       </div>
 
@@ -878,6 +916,7 @@ const PAGE_TITLES = {
   dashboard: '📊 Dashboard',
   leads:     '👥 Leads ทั้งหมด',
   inbox:     '💬 Unified Inbox',
+  groups:    '🗂️ กลุ่มพนักงาน',
   staff:     '🧑‍💼 ข้อมูลพนักงาน',
   usage:     '📈 AI Usage & Cost',
   settings:  '⚙️ ตั้งค่าระบบ',
@@ -885,9 +924,9 @@ const PAGE_TITLES = {
 
 function showPage(name) {
   currentPageName = name;
-  ['dashboard','leads','inbox','staff','usage','settings'].forEach(p => {
+  ['dashboard','leads','inbox','groups','staff','usage','settings'].forEach(p => {
     const el = document.getElementById('page-'+p);
-    if (el) el.style.display = p===name ? (p==='inbox' ? 'block' : 'block') : 'none';
+    if (el) el.style.display = p===name ? 'block' : 'none';
     const nav = document.getElementById('nav-'+p);
     if (nav) nav.classList.toggle('active', p===name);
   });
@@ -896,6 +935,7 @@ function showPage(name) {
   if (name === 'dashboard') loadDashboard();
   if (name === 'leads')     { currentPage=1; loadLeads(); }
   if (name === 'inbox')     initInbox();
+  if (name === 'groups')    loadStaffGroups();
   if (name === 'staff')     loadStaff();
   if (name === 'usage')     loadUsagePage();
   if (name === 'settings')  loadSettings();
@@ -1496,6 +1536,7 @@ let inboxConvs       = [];
 let inboxActiveId    = null;
 let inboxPollTimer   = null;
 let inboxLastMsgTs   = null;
+let inboxRenderedIds = new Set(); // dedup — ป้องกันข้อความซ้ำจาก race condition
 let inboxChFilter    = '';
 let inboxModeFilter  = '';
 let inboxSearchTerm  = '';
@@ -1649,18 +1690,26 @@ async function pollNewMessages() {
 function renderMessages(msgs) {
   const el = document.getElementById('inbox-messages');
   el.innerHTML = '';
+  inboxRenderedIds.clear();
   if (!msgs.length) {
     el.innerHTML = '<div style="text-align:center;color:var(--gray);font-size:.82rem;padding:20px">ยังไม่มีข้อความ</div>';
     return;
   }
-  msgs.forEach(m => el.appendChild(buildMsgEl(m)));
+  msgs.forEach(m => {
+    inboxRenderedIds.add(m.id);
+    el.appendChild(buildMsgEl(m));
+  });
   el.scrollTop = el.scrollHeight;
 }
 
 function appendMessages(msgs) {
   const el = document.getElementById('inbox-messages');
   const wasBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-  msgs.forEach(m => el.appendChild(buildMsgEl(m)));
+  msgs.forEach(m => {
+    if (inboxRenderedIds.has(m.id)) return; // ข้ามถ้าแสดงไปแล้ว
+    inboxRenderedIds.add(m.id);
+    el.appendChild(buildMsgEl(m));
+  });
   if (wasBottom) el.scrollTop = el.scrollHeight;
 }
 
