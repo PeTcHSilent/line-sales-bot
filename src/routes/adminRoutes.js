@@ -43,7 +43,7 @@ router.get('/me', requireAuth, (req, res) => {
 // ── GET /api/admin/users ────────────────────────────────────────
 router.get('/users', requireAuth, async (req, res) => {
   try {
-    const r = await db.query('SELECT id,username,display_name,line_user_id,is_active,role,created_at FROM admin_users ORDER BY id');
+    const r = await db.query('SELECT id,username,display_name,line_user_id,is_active,role,job_type,created_at FROM admin_users ORDER BY id');
     res.json({ success: true, users: r.rows });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -87,7 +87,7 @@ router.post('/users', requireAuth, async (req, res) => {
 // ── PATCH /api/admin/users/:id ── แก้ไขข้อมูลพนักงาน ───────────
 router.patch('/users/:id', requireAuth, async (req, res) => {
   try {
-    const { display_name, role, is_active, line_user_id } = req.body;
+    const { display_name, role, is_active, line_user_id, job_type } = req.body;
     const sets = [];
     const vals = [];
     let idx = 1;
@@ -95,11 +95,12 @@ router.patch('/users/:id', requireAuth, async (req, res) => {
     if (role !== undefined && ['admin','staff'].includes(role)) { sets.push(`role=$${idx++}`); vals.push(role); }
     if (is_active !== undefined) { sets.push(`is_active=$${idx++}`); vals.push(is_active); }
     if (line_user_id !== undefined) { sets.push(`line_user_id=$${idx++}`); vals.push(line_user_id || null); }
+    if (job_type !== undefined && ['new_business','renewal','both'].includes(job_type)) { sets.push(`job_type=$${idx++}`); vals.push(job_type); }
     if (!sets.length) return res.status(400).json({ success: false, error: 'Nothing to update' });
 
     vals.push(req.params.id);
     const r = await db.query(
-      `UPDATE admin_users SET ${sets.join(',')} WHERE id=$${idx} RETURNING id,username,display_name,role,line_user_id,is_active`,
+      `UPDATE admin_users SET ${sets.join(',')} WHERE id=$${idx} RETURNING id,username,display_name,role,line_user_id,is_active,job_type`,
       vals
     );
     if (!r.rows[0]) return res.status(404).json({ success: false, error: 'Not found' });

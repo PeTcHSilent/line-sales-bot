@@ -1777,11 +1777,16 @@ async function inboxSendReply() {
   input.value = '';
   input.disabled = true;
 
+  // Pre-advance timestamp → poll ที่ยิงระหว่าง await จะไม่หยิบข้อความนี้มาซ้ำ
+  const savedTs = inboxLastMsgTs;
+  inboxLastMsgTs = new Date().toISOString();
+
   const r = await api('POST', `/inbox/${inboxActiveId}/reply`, { text });
   input.disabled = false;
   if (!r?.success) {
     toast('ส่งไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
-    input.value = text; // restore
+    input.value = text;       // restore text
+    inboxLastMsgTs = savedTs; // restore timestamp
     return;
   }
   appendMessages([r.message]);
@@ -1809,6 +1814,65 @@ function fmtInbox(iso) {
 function escHtml(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════════
+//  กลุ่มพนักงาน
+// ════════════════════════════════════════════
+async function loadStaffGroups() {
+  const tbody = document.getElementById('groups-table-body');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="5">กำลังโหลด...</td></tr>';
+
+  const data = await api('GET', '/admin/users');
+  if (!data?.success) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">โหลดข้อมูลไม่สำเร็จ</td></tr>';
+    return;
+  }
+
+  const JOB_LABEL = {
+    new_business: '🆕 งานใหม่',
+    renewal:      '🔄 ต่ออายุ',
+    both:         '🔀 ทั้งสองประเภท',
+  };
+
+  tbody.innerHTML = '';
+  data.users.forEach((u, i) => {
+    const opt = (val, label) =>
+      `<option value="${val}" ${u.job_type === val ? 'selected' : ''}>${label}</option>`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--gray)">${i+1}</td>
+      <td>
+        <strong>${escHtml(u.display_name)}</strong>
+        <div style="font-size:.75rem;color:var(--gray)">@${escHtml(u.username)}</div>
+      </td>
+      <td><span class="badge">${u.role === 'admin' ? '🛡️ Admin' : '👤 Staff'}</span></td>
+      <td>
+        <select id="jt-${u.id}" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:.82rem;min-width:160px">
+          ${opt('new_business','🆕 งานใหม่')}
+          ${opt('renewal','🔄 ต่ออายุ')}
+          ${opt('both','🔀 ทั้งสองประเภท')}
+        </select>
+      </td>
+      <td>
+        <button class="btn btn-blue btn-sm" onclick="saveJobType(${u.id})">บันทึก</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function saveJobType(userId) {
+  const sel = document.getElementById('jt-' + userId);
+  if (!sel) return;
+  const job_type = sel.value;
+  const r = await api('PATCH', `/admin/users/${userId}`, { job_type });
+  if (r?.success) {
+    toast('บันทึกสำเร็จ ✅', 'success');
+  } else {
+    toast('บันทึกไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
+  }
 }
 
 // ════════════════════════════════════════════
