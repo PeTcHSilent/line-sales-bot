@@ -8,7 +8,9 @@ const leadsRoutes   = require('./routes/leadsRoutes');
 const adminRoutes   = require('./routes/adminRoutes');
 const usageRoutes   = require('./routes/usageRoutes');
 const syncRoutes    = require('./routes/syncRoutes');
-const inboxRoutes   = require('./routes/inboxRoutes');
+const inboxRoutes        = require('./routes/inboxRoutes');
+const tagsRoutes         = require('./routes/tagsRoutes');
+const quickRepliesRoutes = require('./routes/quickRepliesRoutes');
 const hrSync        = require('./services/hrSyncService');
 
 const app  = express();
@@ -29,7 +31,9 @@ app.use('/api/leads',  leadsRoutes);
 app.use('/api/admin',  adminRoutes);
 app.use('/api/usage',  usageRoutes);
 app.use('/api/sync',   syncRoutes);
-app.use('/api/inbox',  inboxRoutes);
+app.use('/api/inbox',        inboxRoutes);
+app.use('/api/tags',         tagsRoutes);
+app.use('/api/quick-replies', quickRepliesRoutes);
 
 // ── Admin Panel SPA ──────────────────────────────────────────────
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));

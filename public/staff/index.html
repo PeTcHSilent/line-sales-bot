@@ -127,6 +127,39 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .toast.error{background:#dc2626}
 .toast.info{background:#2563eb}
 
+/* ── Tags ── */
+.conv-tags-bar{background:var(--surface);padding:8px 16px 6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;min-height:36px}
+.tag-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:12px;font-size:.7rem;font-weight:600;color:#fff;white-space:nowrap}
+.tag-chip .rm{cursor:pointer;opacity:.75;line-height:1;margin-left:2px}
+.tag-chip .rm:hover{opacity:1}
+.add-tag-btn{padding:3px 9px;border-radius:12px;font-size:.7rem;font-weight:600;background:#f3f4f6;border:1px dashed var(--gray2);color:var(--gray);cursor:pointer;transition:all .15s;white-space:nowrap}
+.add-tag-btn:hover{background:#e5e7eb;border-color:var(--gray);color:var(--text2)}
+.tag-dd-wrap{position:relative}
+.tag-dropdown{position:absolute;top:100%;left:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.13);padding:6px;min-width:160px;z-index:200;display:none;margin-top:4px}
+.tag-dropdown.open{display:block}
+.tag-dd-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:7px;cursor:pointer;font-size:.8rem;color:var(--text2);transition:background .12s}
+.tag-dd-item:hover{background:#f3f4f6}
+.tag-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.tags-none{font-size:.72rem;color:var(--gray2);font-style:italic}
+
+/* ── Quick Replies ── */
+.reply-wrapper{position:relative;flex-shrink:0}
+.qr-panel{position:absolute;bottom:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 -4px 24px rgba(0,0,0,.12);max-height:260px;display:none;flex-direction:column;z-index:100;overflow:hidden}
+.qr-panel.open{display:flex}
+.qr-top{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.qr-top span{font-size:.75rem;font-weight:600;color:var(--gray);white-space:nowrap}
+.qr-search-inp{flex:1;border:none;outline:none;font-size:.83rem;background:transparent;color:var(--text)}
+.qr-list{overflow-y:auto;flex:1}
+.qr-item{padding:9px 14px;cursor:pointer;border-bottom:1px solid #f5f5f5;transition:background .12s}
+.qr-item:last-child{border-bottom:none}
+.qr-item:hover{background:#f0f7ff}
+.qr-item-title{font-size:.78rem;font-weight:600;color:var(--text2)}
+.qr-item-preview{font-size:.73rem;color:var(--gray);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qr-empty{padding:16px;text-align:center;color:var(--gray);font-size:.8rem}
+.btn-qr{padding:10px 12px;background:#f3f4f6;color:var(--gray);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:.82rem;transition:all .15s;flex-shrink:0;line-height:1}
+.btn-qr:hover{background:#e5e7eb;color:var(--text2)}
+.btn-qr.active{background:#eff6ff;border-color:var(--blue);color:var(--blue)}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -225,12 +258,26 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
           <div class="chat-actions" id="chat-actions"></div>
         </div>
 
+        <!-- Tags bar -->
+        <div class="conv-tags-bar" id="conv-tags-bar"></div>
+
         <div class="messages-area" id="messages-area"></div>
 
-        <div class="reply-box">
-          <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
-            oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
-          <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
+        <div class="reply-wrapper">
+          <!-- Quick Replies panel -->
+          <div class="qr-panel" id="qr-panel">
+            <div class="qr-top">
+              <span>⚡ Quick Replies</span>
+              <input class="qr-search-inp" id="qr-search-inp" type="text" placeholder="ค้นหา..." oninput="renderQRList()">
+            </div>
+            <div class="qr-list" id="qr-list"></div>
+          </div>
+          <div class="reply-box">
+            <button class="btn-qr" id="btn-qr" onclick="toggleQR()" title="Quick Replies">⚡</button>
+            <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
+              oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
+            <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
+          </div>
         </div>
       </div>
     </div>
@@ -254,6 +301,12 @@ let lastMsgTs     = null;
 let pollTimer     = null;
 let renderedIds   = new Set();
 let searchTimer   = null;
+
+// Tags & Quick Replies state
+let allTags      = [];
+let convTags     = [];
+let quickReplies = [];
+let qrOpen       = false;
 
 // ════════════════════════════════════════════
 //  API helper
@@ -322,7 +375,7 @@ async function startApp() {
   };
   document.getElementById('group-badge').textContent = JOB_LABEL[currentUser.job_type] || currentUser.job_type || '—';
 
-  await loadConvs();
+  await Promise.all([loadConvs(), loadAllTags(), loadQuickReplies()]);
 
   // Poll every 5 seconds for new messages in active conv
   clearInterval(pollTimer);
@@ -433,9 +486,12 @@ async function openConv(id) {
   const conv = convs.find(c => c.id === id);
   if (conv) updateChatHeader(conv);
 
-  // Load messages
-  const data = await api('GET', `/inbox/${id}/messages`);
-  if (data?.success) renderMessages(data.messages);
+  // Load messages + tags in parallel
+  const [msgData] = await Promise.all([
+    api('GET', `/inbox/${id}/messages`),
+    loadConvTags(id),
+  ]);
+  if (msgData?.success) renderMessages(msgData.messages);
 }
 
 function updateChatHeader(conv) {
@@ -624,6 +680,140 @@ function toast(msg, type = 'info') {
   el.className = `toast ${type} show`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ════════════════════════════════════════════
+//  Tags
+// ════════════════════════════════════════════
+async function loadAllTags() {
+  const r = await api('GET', '/tags');
+  if (r?.success) allTags = r.tags;
+}
+
+async function loadConvTags(convId) {
+  const r = await api('GET', `/tags/conv/${convId}`);
+  convTags = r?.success ? r.tags : [];
+  renderConvTags();
+}
+
+function renderConvTags() {
+  const bar = document.getElementById('conv-tags-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+
+  if (!convTags.length) {
+    const none = document.createElement('span');
+    none.className = 'tags-none';
+    none.textContent = 'ยังไม่มี tag';
+    bar.appendChild(none);
+  } else {
+    convTags.forEach(t => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.style.background = t.color;
+      chip.innerHTML = `${escHtml(t.name)}<span class="rm" onclick="removeConvTag(${t.id})" title="ลบ">✕</span>`;
+      bar.appendChild(chip);
+    });
+  }
+
+  // Add-tag button + dropdown
+  const wrap = document.createElement('div');
+  wrap.className = 'tag-dd-wrap';
+  const btn = document.createElement('button');
+  btn.className = 'add-tag-btn';
+  btn.textContent = '+ เพิ่ม tag';
+  btn.onclick = e => { e.stopPropagation(); openTagDropdown(wrap); };
+  const dd = document.createElement('div');
+  dd.className = 'tag-dropdown';
+  dd.id = 'tag-dropdown';
+  wrap.appendChild(btn);
+  wrap.appendChild(dd);
+  bar.appendChild(wrap);
+}
+
+function openTagDropdown(wrap) {
+  const dd = wrap.querySelector('.tag-dropdown');
+  const isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.tag-dropdown.open').forEach(el => el.classList.remove('open'));
+  if (isOpen) return;
+
+  const currentIds = new Set(convTags.map(t => t.id));
+  const available  = allTags.filter(t => !currentIds.has(t.id));
+  if (!available.length) {
+    dd.innerHTML = '<div style="padding:10px 14px;font-size:.78rem;color:var(--gray)">ไม่มี tag เพิ่มเติม</div>';
+  } else {
+    dd.innerHTML = available.map(t => `
+      <div class="tag-dd-item" onclick="addConvTag(${t.id})">
+        <div class="tag-dot" style="background:${t.color}"></div>
+        <span>${escHtml(t.name)}</span>
+      </div>
+    `).join('');
+  }
+  dd.classList.add('open');
+}
+
+async function addConvTag(tagId) {
+  if (!activeId) return;
+  await api('POST', `/tags/conv/${activeId}/${tagId}`);
+  await loadConvTags(activeId);
+}
+
+async function removeConvTag(tagId) {
+  if (!activeId) return;
+  await api('DELETE', `/tags/conv/${activeId}/${tagId}`);
+  await loadConvTags(activeId);
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', () => {
+  document.querySelectorAll('.tag-dropdown.open').forEach(el => el.classList.remove('open'));
+});
+
+// ════════════════════════════════════════════
+//  Quick Replies
+// ════════════════════════════════════════════
+async function loadQuickReplies() {
+  const r = await api('GET', '/quick-replies');
+  if (r?.success) quickReplies = r.quick_replies;
+}
+
+function toggleQR() {
+  qrOpen = !qrOpen;
+  document.getElementById('qr-panel').classList.toggle('open', qrOpen);
+  document.getElementById('btn-qr').classList.toggle('active', qrOpen);
+  if (qrOpen) {
+    renderQRList();
+    document.getElementById('qr-search-inp').focus();
+  }
+}
+
+function renderQRList() {
+  const list   = document.getElementById('qr-list');
+  const filter = (document.getElementById('qr-search-inp')?.value || '').toLowerCase();
+  const filtered = quickReplies.filter(q =>
+    q.title.toLowerCase().includes(filter) ||
+    q.content.toLowerCase().includes(filter)
+  );
+  if (!filtered.length) {
+    list.innerHTML = '<div class="qr-empty">ไม่พบ Quick Reply</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(q => `
+    <div class="qr-item" onclick="useQR(${JSON.stringify(escHtml(q.content))})">
+      <div class="qr-item-title">${escHtml(q.title)}</div>
+      <div class="qr-item-preview">${escHtml(q.content)}</div>
+    </div>
+  `).join('');
+}
+
+function useQR(content) {
+  // unescape HTML entities that escHtml added
+  const txt = content.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+  const input = document.getElementById('reply-input');
+  input.value = txt;
+  autoGrow(input);
+  input.focus();
+  toggleQR(); // close panel
 }
 
 // ════════════════════════════════════════════
