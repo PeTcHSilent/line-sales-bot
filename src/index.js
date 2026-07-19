@@ -38,6 +38,12 @@ app.get('/admin/*', (_req, res) =>
 );
 
 // ── Staff Chat Page ───────────────────────────────────────────────
+app.get('/staff', (_req, res) =>
+  res.sendFile(path.join(__dirname, '../public/staff/index.html'))
+);
+app.get('/staff/', (_req, res) =>
+  res.sendFile(path.join(__dirname, '../public/staff/index.html'))
+);
 app.use('/staff', express.static(path.join(__dirname, '../public/staff')));
 app.get('/staff/*', (_req, res) =>
   res.sendFile(path.join(__dirname, '../public/staff/index.html'))
