@@ -18,9 +18,11 @@ const followUpRoutes     = require('./routes/followUpRoutes');
 const customerRoutes     = require('./routes/customerRoutes');
 const keywordRoutes      = require('./routes/keywordRoutes');
 const exportRoutes       = require('./routes/exportRoutes');
+const renewalRoutes      = require('./routes/renewalRoutes');
 const hrSync        = require('./services/hrSyncService');
 const followUpCron  = require('./cron/followUpCron');
 const slaCron       = require('./cron/slaCron');
+const renewalCron   = require('./cron/renewalCron');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -51,6 +53,7 @@ app.use('/api/follow-ups',    followUpRoutes);
 app.use('/api/customers',     customerRoutes);
 app.use('/api/keywords',      keywordRoutes);
 app.use('/api/export',        exportRoutes);
+app.use('/api/renewal',       renewalRoutes);
 
 // ── Uploaded images (staff → customer) ───────────────────────────
 // LINE fetches images from this public URL when sending to customers
@@ -93,6 +96,7 @@ app.listen(PORT, () => {
   hrSync.startAutoSync();
   followUpCron.start();
   slaCron.start();
+  renewalCron.start();
 });
 
 module.exports = app;

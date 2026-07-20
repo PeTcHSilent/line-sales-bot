@@ -244,6 +244,9 @@
     <div class="nav-item" onclick="showPage('keywords')" id="nav-keywords">
       <span class="icon">🔑</span> Keyword Rules
     </div>
+    <div class="nav-item" onclick="showPage('renewal')" id="nav-renewal">
+      <span class="icon">🔔</span> ต่ออายุ
+    </div>
     <div class="nav-section">ระบบ</div>
     <div class="nav-item" onclick="showPage('usage')" id="nav-usage">
       <span class="icon">📈</span> AI Usage & Cost
@@ -825,6 +828,31 @@
         </div>
       </div>
 
+      <!-- ══ Page: Renewal Dashboard ══ -->
+      <div id="page-renewal" style="display:none">
+
+        <!-- Summary cards -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px" id="renewal-summary-cards">
+          <div class="card"><div class="card-body" style="padding:18px 20px;text-align:center;color:var(--gray2)">กำลังโหลด...</div></div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-body" style="padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <label style="font-size:.82rem;font-weight:600;color:var(--gray2)">พนักงาน:</label>
+            <select id="renewal-staff-filter" onchange="loadRenewal()"
+              style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.83rem">
+              <option value="">ทุกพนักงาน</option>
+            </select>
+            <label style="font-size:.82rem;font-weight:600;color:var(--gray2);margin-left:8px">เดือน:</label>
+            <div id="renewal-month-tabs" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+        </div>
+
+        <!-- Table area (grouped by month) -->
+        <div id="renewal-table-area"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1061,6 +1089,163 @@ const INSURANCE_LABEL = {
 };
 
 // ════════════════════════════════════════════
+//  Renewal Dashboard
+// ════════════════════════════════════════════
+let _renewalData        = [];
+let _renewalMonths      = [];
+let _renewalActiveMonth = 'all';
+
+async function loadRenewal() {
+  const staffId = document.getElementById('renewal-staff-filter')?.value || '';
+  const qs      = staffId ? `?staff_id=${staffId}` : '';
+  const data    = await api('GET', `/renewal/list${qs}`);
+  if (!data?.success) return;
+
+  _renewalData   = data.rows   || [];
+  _renewalMonths = data.months || [];
+
+  /* ── Summary Cards ── */
+  const expired = _renewalData.filter(r => r.days_remaining < 0).length;
+  const d30     = _renewalData.filter(r => r.days_remaining >= 0 && r.days_remaining <= 30).length;
+  const d60     = _renewalData.filter(r => r.days_remaining > 30 && r.days_remaining <= 60).length;
+  const d90     = _renewalData.filter(r => r.days_remaining > 60 && r.days_remaining <= 90).length;
+
+  document.getElementById('renewal-summary-cards').innerHTML = `
+    <div class="card" style="border-left:4px solid #ef4444">
+      <div class="card-body" style="padding:16px 20px">
+        <div style="font-size:2rem;font-weight:700;color:#ef4444">${expired}</div>
+        <div style="font-size:.78rem;color:var(--gray2);margin-top:4px">🔴 หมดอายุแล้ว</div>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid #f97316">
+      <div class="card-body" style="padding:16px 20px">
+        <div style="font-size:2rem;font-weight:700;color:#f97316">${d30}</div>
+        <div style="font-size:.78rem;color:var(--gray2);margin-top:4px">🟠 เหลือ ≤30 วัน</div>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid #eab308">
+      <div class="card-body" style="padding:16px 20px">
+        <div style="font-size:2rem;font-weight:700;color:#eab308">${d60}</div>
+        <div style="font-size:.78rem;color:var(--gray2);margin-top:4px">🟡 เหลือ 31–60 วัน</div>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid #22c55e">
+      <div class="card-body" style="padding:16px 20px">
+        <div style="font-size:2rem;font-weight:700;color:#22c55e">${d90}</div>
+        <div style="font-size:.78rem;color:var(--gray2);margin-top:4px">🟢 เหลือ 61–90 วัน</div>
+      </div>
+    </div>
+  `;
+
+  /* ── Staff dropdown (populate only on first load) ── */
+  const sfEl = document.getElementById('renewal-staff-filter');
+  if (sfEl.options.length <= 1) {
+    const staffMap = new Map();
+    _renewalData.forEach(r => { if (r.staff_id) staffMap.set(r.staff_id, r.staff_name); });
+    staffMap.forEach((name, id) => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = name || `Staff #${id}`;
+      sfEl.appendChild(o);
+    });
+    if (staffId) sfEl.value = staffId;
+  }
+
+  /* ── Month tabs ── */
+  _renewalActiveMonth = 'all';
+  renderRenewalMonthTabs();
+  renderRenewalTable();
+}
+
+function renderRenewalMonthTabs() {
+  const tabEl = document.getElementById('renewal-month-tabs');
+  const tabs  = [`<button class="btn btn-sm ${_renewalActiveMonth==='all'?'btn-blue':'btn-ghost'}" onclick="setRenewalMonth('all')">ทั้งหมด (${_renewalData.length})</button>`];
+  _renewalMonths.forEach(m => {
+    const key   = m.key;
+    const label = new Date(m.year, m.month - 1, 1)
+      .toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+    const cnt   = _renewalData.filter(r => `${r.exp_year}-${String(r.exp_month).padStart(2,'0')}` === key).length;
+    tabs.push(`<button class="btn btn-sm ${_renewalActiveMonth===key?'btn-blue':'btn-ghost'}" onclick="setRenewalMonth('${key}')">${label} (${cnt})</button>`);
+  });
+  tabEl.innerHTML = tabs.join('');
+}
+
+function setRenewalMonth(key) {
+  _renewalActiveMonth = key;
+  renderRenewalMonthTabs();
+  renderRenewalTable();
+}
+
+function renderRenewalTable() {
+  const area     = document.getElementById('renewal-table-area');
+  const filtered = _renewalActiveMonth === 'all'
+    ? _renewalData
+    : _renewalData.filter(r => `${r.exp_year}-${String(r.exp_month).padStart(2,'0')}` === _renewalActiveMonth);
+
+  if (!filtered.length) {
+    area.innerHTML = `<div class="card"><div class="card-body" style="padding:32px;text-align:center;color:var(--gray2);font-size:.9rem">ไม่มีลูกค้าที่ต้องแจ้งเตือนในช่วงนี้ 🎉</div></div>`;
+    return;
+  }
+
+  /* Group by month */
+  const groups = {}, orderedKeys = [];
+  filtered.forEach(r => {
+    const key = `${r.exp_year}-${String(r.exp_month).padStart(2,'0')}`;
+    if (!groups[key]) { groups[key] = []; orderedKeys.push(key); }
+    groups[key].push(r);
+  });
+
+  area.innerHTML = orderedKeys.map(key => {
+    const [y, m] = key.split('-');
+    const label  = new Date(parseInt(y), parseInt(m) - 1, 1)
+      .toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+
+    const rows = groups[key].map(r => {
+      const days = parseInt(r.days_remaining);
+      let badge;
+      if (days < 0)      badge = `<span style="background:#fee2e2;color:#b91c1c;padding:2px 9px;border-radius:12px;font-size:.73rem;font-weight:600">🔴 เกิน ${Math.abs(days)} วัน</span>`;
+      else if (days <=30) badge = `<span style="background:#ffedd5;color:#9a3412;padding:2px 9px;border-radius:12px;font-size:.73rem;font-weight:600">🟠 ${days} วัน</span>`;
+      else if (days <=60) badge = `<span style="background:#fef9c3;color:#92400e;padding:2px 9px;border-radius:12px;font-size:.73rem;font-weight:600">🟡 ${days} วัน</span>`;
+      else                badge = `<span style="background:#dcfce7;color:#15803d;padding:2px 9px;border-radius:12px;font-size:.73rem;font-weight:600">🟢 ${days} วัน</span>`;
+      const car   = [r.car_brand, r.car_model].filter(Boolean).join(' ') || '—';
+      const name  = r.cust_name || r.customer_line_name || '—';
+      const endFmt= r.coverage_end
+        ? new Date(r.coverage_end).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'})
+        : '—';
+      return `<tr>
+        <td>${name}</td>
+        <td>${r.phone||'—'}</td>
+        <td style="font-size:.8rem">${car}</td>
+        <td>${r.license_plate||'—'}</td>
+        <td>${endFmt}</td>
+        <td>${badge}</td>
+        <td style="font-size:.8rem;color:var(--gray2)">${r.staff_name||'—'}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <h3>📅 ${label}
+            <span style="font-size:.8rem;font-weight:400;color:var(--gray2)">${groups[key].length} ราย</span>
+          </h3>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table>
+            <thead>
+              <tr>
+                <th>ชื่อ-นามสกุล</th><th>เบอร์โทร</th>
+                <th>ยี่ห้อ/รุ่น</th><th>ทะเบียน</th>
+                <th>วันหมดอายุ</th><th>วันเหลือ</th><th>พนักงาน</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
 //  API helper
 // ════════════════════════════════════════════
 async function api(method, path, body) {
@@ -1125,13 +1310,14 @@ const PAGE_TITLES = {
   analytics: '📊 Analytics',
   broadcast: '📣 Broadcast',
   keywords:  '🔑 Keyword Auto-reply Rules',
+  renewal:   '🔔 Dashboard ต่ออายุกรมธรรม์',
   usage:     '📈 AI Usage & Cost',
   settings:  '⚙️ ตั้งค่าระบบ',
 };
 
 function showPage(name) {
   currentPageName = name;
-  ['dashboard','leads','inbox','groups','staff','analytics','broadcast','keywords','usage','settings'].forEach(p => {
+  ['dashboard','leads','inbox','groups','staff','analytics','broadcast','keywords','renewal','usage','settings'].forEach(p => {
     const el = document.getElementById('page-'+p);
     if (el) el.style.display = p===name ? 'block' : 'none';
     const nav = document.getElementById('nav-'+p);
@@ -1147,6 +1333,7 @@ function showPage(name) {
   if (name === 'analytics') loadAnalytics();
   if (name === 'broadcast') loadBroadcastPage();
   if (name === 'keywords')  loadKeywords();
+  if (name === 'renewal')   loadRenewal();
   if (name === 'usage')     loadUsagePage();
   if (name === 'settings')  loadSettings();
 }

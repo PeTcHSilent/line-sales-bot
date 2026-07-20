@@ -48,6 +48,19 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .top-bar .user-info{display:flex;align-items:center;gap:12px;font-size:.82rem;color:var(--sidebar-text)}
 .btn-logout{padding:5px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;cursor:pointer;font-size:.78rem;transition:background .2s}
 .btn-logout:hover{background:rgba(255,255,255,.2)}
+.btn-renewal-top{padding:5px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;cursor:pointer;font-size:.78rem;transition:background .2s}
+.btn-renewal-top:hover{background:rgba(255,255,255,.2)}
+/* Renewal Modal */
+.renewal-modal-box{background:#fff;border-radius:14px;width:min(820px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.renewal-modal-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.renewal-modal-header h3{font-size:.95rem;font-weight:700;margin:0}
+.renewal-modal-body{flex:1;overflow-y:auto;padding:18px 20px}
+.renewal-month-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.renewal-tbl{width:100%;border-collapse:collapse;font-size:.82rem}
+.renewal-tbl th{background:#f8fafc;padding:8px 10px;text-align:left;font-size:.75rem;font-weight:600;color:var(--gray2);border-bottom:1px solid var(--border)}
+.renewal-tbl td{padding:8px 10px;border-bottom:1px solid var(--border)}
+.renewal-tbl tr:last-child td{border-bottom:none}
+.renewal-section-title{font-size:.83rem;font-weight:700;color:var(--text);margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--border)}
 .btn-notif{background:none;border:none;color:#fff;font-size:1.05rem;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background .2s;line-height:1}
 .btn-notif:hover{background:rgba(255,255,255,.15)}
 
@@ -367,6 +380,7 @@ mark.msg-hl.current{background:#f97316;color:#fff}
     <div class="user-info">
       <span id="user-display">—</span>
       <button class="btn-notif" id="btn-notif" onclick="toggleNotif()" title="เปิด/ปิดการแจ้งเตือน">🔔</button>
+      <button class="btn-renewal-top" id="btn-renewal-top" onclick="openRenewalStaff()" title="รายชื่อลูกค้าต่ออายุ">📋 ต่ออายุ</button>
       <button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
@@ -563,6 +577,24 @@ mark.msg-hl.current{background:#f97316;color:#fff}
   <div id="profile-content"><div style="padding:20px;text-align:center;color:var(--gray)">กำลังโหลด...</div></div>
 </div>
 
+<!-- ── Renewal Modal (Staff view) ── -->
+<div class="modal-overlay" id="modal-renewal-staff" onclick="if(event.target===this)closeRenewalStaff()">
+  <div class="renewal-modal-box">
+    <div class="renewal-modal-header">
+      <h3>🔔 รายชื่อลูกค้าต่ออายุกรมธรรม์ (ภายใน 90 วัน)</h3>
+      <button class="btn-notes-close" onclick="closeRenewalStaff()">✕</button>
+    </div>
+    <div class="renewal-modal-body">
+      <!-- Summary row -->
+      <div id="renewal-staff-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+      <!-- Month tabs -->
+      <div class="renewal-month-tabs" id="renewal-staff-month-tabs"></div>
+      <!-- Table -->
+      <div id="renewal-staff-table"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -634,6 +666,124 @@ function doLogout() {
   clearInterval(pollTimer);
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ════════════════════════════════════════════
+//  Renewal Modal (Staff)
+// ════════════════════════════════════════════
+let _renewalStaffData   = [];
+let _renewalStaffMonths = [];
+let _renewalStaffMonth  = 'all';
+
+async function openRenewalStaff() {
+  document.getElementById('modal-renewal-staff').classList.add('open');
+  await loadRenewalStaff();
+}
+
+function closeRenewalStaff() {
+  document.getElementById('modal-renewal-staff').classList.remove('open');
+}
+
+async function loadRenewalStaff() {
+  const staffId = currentUser?.id;
+  const qs      = staffId ? `?staff_id=${staffId}` : '';
+  const data    = await api('GET', `/renewal/list${qs}`);
+  if (!data?.success) return;
+
+  _renewalStaffData   = data.rows   || [];
+  _renewalStaffMonths = data.months || [];
+  _renewalStaffMonth  = 'all';
+
+  /* Summary pills */
+  const expired = _renewalStaffData.filter(r => r.days_remaining < 0).length;
+  const d30     = _renewalStaffData.filter(r => r.days_remaining >= 0 && r.days_remaining <= 30).length;
+  const d60     = _renewalStaffData.filter(r => r.days_remaining > 30 && r.days_remaining <= 60).length;
+  const d90     = _renewalStaffData.filter(r => r.days_remaining > 60 && r.days_remaining <= 90).length;
+
+  document.getElementById('renewal-staff-summary').innerHTML = [
+    expired ? `<span style="background:#fee2e2;color:#b91c1c;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600">🔴 หมดอายุแล้ว ${expired} ราย</span>` : '',
+    d30     ? `<span style="background:#ffedd5;color:#9a3412;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600">🟠 ≤30 วัน ${d30} ราย</span>` : '',
+    d60     ? `<span style="background:#fef9c3;color:#92400e;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600">🟡 31–60 วัน ${d60} ราย</span>` : '',
+    d90     ? `<span style="background:#dcfce7;color:#15803d;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600">🟢 61–90 วัน ${d90} ราย</span>` : '',
+    !_renewalStaffData.length ? `<span style="color:var(--gray2);font-size:.83rem">ไม่มีลูกค้าที่ต้องต่ออายุ 🎉</span>` : '',
+  ].join('');
+
+  renderRenewalStaffMonthTabs();
+  renderRenewalStaffTable();
+}
+
+function renderRenewalStaffMonthTabs() {
+  const tabEl = document.getElementById('renewal-staff-month-tabs');
+  const tabs  = [`<button class="btn btn-sm ${_renewalStaffMonth==='all'?'btn-blue':'btn-ghost'}" onclick="setRenewalStaffMonth('all')">ทั้งหมด (${_renewalStaffData.length})</button>`];
+  _renewalStaffMonths.forEach(m => {
+    const key   = m.key;
+    const label = new Date(m.year, m.month - 1, 1)
+      .toLocaleDateString('th-TH', { month: 'short', year: '2-digit' });
+    const cnt   = _renewalStaffData.filter(r => `${r.exp_year}-${String(r.exp_month).padStart(2,'0')}` === key).length;
+    tabs.push(`<button class="btn btn-sm ${_renewalStaffMonth===key?'btn-blue':'btn-ghost'}" onclick="setRenewalStaffMonth('${key}')">${label} (${cnt})</button>`);
+  });
+  tabEl.innerHTML = tabs.join('');
+}
+
+function setRenewalStaffMonth(key) {
+  _renewalStaffMonth = key;
+  renderRenewalStaffMonthTabs();
+  renderRenewalStaffTable();
+}
+
+function renderRenewalStaffTable() {
+  const area     = document.getElementById('renewal-staff-table');
+  const filtered = _renewalStaffMonth === 'all'
+    ? _renewalStaffData
+    : _renewalStaffData.filter(r => `${r.exp_year}-${String(r.exp_month).padStart(2,'0')}` === _renewalStaffMonth);
+
+  if (!filtered.length) {
+    area.innerHTML = `<div style="text-align:center;padding:32px;color:var(--gray2);font-size:.88rem">ไม่มีข้อมูลในช่วงนี้</div>`;
+    return;
+  }
+
+  /* Group by month */
+  const groups = {}, orderedKeys = [];
+  filtered.forEach(r => {
+    const key = `${r.exp_year}-${String(r.exp_month).padStart(2,'0')}`;
+    if (!groups[key]) { groups[key] = []; orderedKeys.push(key); }
+    groups[key].push(r);
+  });
+
+  area.innerHTML = orderedKeys.map(key => {
+    const [y, m] = key.split('-');
+    const label  = new Date(parseInt(y), parseInt(m) - 1, 1)
+      .toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+
+    const rows = groups[key].map(r => {
+      const days = parseInt(r.days_remaining);
+      let badge;
+      if (days < 0)       badge = `<span style="background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:600">🔴 เกิน ${Math.abs(days)} วัน</span>`;
+      else if (days <= 30) badge = `<span style="background:#ffedd5;color:#9a3412;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:600">🟠 ${days} วัน</span>`;
+      else if (days <= 60) badge = `<span style="background:#fef9c3;color:#92400e;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:600">🟡 ${days} วัน</span>`;
+      else                 badge = `<span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:600">🟢 ${days} วัน</span>`;
+      const car    = [r.car_brand, r.car_model].filter(Boolean).join(' ') || '—';
+      const name   = r.cust_name || r.customer_line_name || '—';
+      const endFmt = r.coverage_end
+        ? new Date(r.coverage_end).toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'})
+        : '—';
+      return `<tr>
+        <td>${name}</td>
+        <td>${r.phone||'—'}</td>
+        <td>${car}</td>
+        <td>${r.license_plate||'—'}</td>
+        <td>${endFmt}</td>
+        <td>${badge}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="renewal-section-title">📅 ${label} <span style="font-size:.75rem;color:var(--gray2);font-weight:400">${groups[key].length} ราย</span></div>
+      <table class="renewal-tbl">
+        <thead><tr><th>ชื่อ</th><th>เบอร์</th><th>ยี่ห้อ/รุ่น</th><th>ทะเบียน</th><th>หมดอายุ</th><th>วันเหลือ</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════
