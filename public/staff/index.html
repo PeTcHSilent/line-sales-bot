@@ -751,7 +751,10 @@ function buildMsgEl(m) {
   // Render image messages
   let bubbleBody;
   if (m.msg_type === 'image' && m.content) {
-    bubbleBody = `<img src="${escHtml(m.content)}" alt="รูปภาพ" onclick="window.open('${escHtml(m.content)}','_blank')" loading="lazy">`;
+    // LINE image API requires Authorization header — use server-side proxy
+    const tok = localStorage.getItem('token') || '';
+    const proxyUrl = `/api/inbox/image-proxy?url=${encodeURIComponent(m.content)}&t=${encodeURIComponent(tok)}`;
+    bubbleBody = `<img src="${proxyUrl}" alt="รูปภาพ" onclick="window.open('${proxyUrl}','_blank')" loading="lazy">`;
   } else {
     bubbleBody = escHtml(m.content);
   }
