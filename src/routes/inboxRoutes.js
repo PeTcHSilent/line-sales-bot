@@ -6,17 +6,24 @@
  * GET  /api/inbox/:id              — get one conversation
  * GET  /api/inbox/:id/messages     — get messages (+ mark read)
  * GET  /api/inbox/:id/poll?since=  — poll new messages
- * POST /api/inbox/:id/reply        — staff reply (push to LINE or Messenger)
+ * POST /api/inbox/:id/reply        — staff reply text (push to LINE or Messenger)
+ * POST /api/inbox/:id/reply-image  — staff reply with image (LINE only)
  * PATCH /api/inbox/:id/mode        — set mode: bot | human | resolved
  * GET  /api/inbox/image-proxy      — proxy LINE image (requires ?url= &t=JWT)
  */
 
 const express    = require('express');
 const jwt        = require('jsonwebtoken');
+const fs         = require('fs');
+const path       = require('path');
 const line       = require('@line/bot-sdk');
 const { requireAuth } = require('../middleware/auth');
 const inboxService    = require('../services/inboxService');
 const messengerSvc    = require('../services/messengerService');
+
+// Ensure uploads directory exists
+const UPLOADS_DIR = path.join(__dirname, '../../public/uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const router = express.Router();
 
@@ -225,6 +232,67 @@ router.patch('/:id/transfer', requireAuth, async (req, res) => {
 
     res.json({ success: true, conversation: updated, to_name: toName });
   } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── POST /api/inbox/:id/reply-image — staff ส่งรูปให้ลูกค้า ──────
+// Body: { image_base64, filename, mime_type }
+// ต้องการ APP_URL env หรือใช้ req.get('host') เพื่อสร้าง public URL
+router.post('/:id/reply-image', requireAuth, async (req, res) => {
+  try {
+    const { image_base64, filename, mime_type } = req.body;
+    if (!image_base64) return res.status(400).json({ success: false, error: 'image_base64 required' });
+
+    // Validate MIME
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowed.includes(mime_type)) {
+      return res.status(400).json({ success: false, error: 'รองรับเฉพาะ JPEG, PNG, GIF, WebP' });
+    }
+
+    // Validate size (base64 → ~75% of original; 8MB original ≈ ~10.7MB base64)
+    if (image_base64.length > 10_700_000) {
+      return res.status(400).json({ success: false, error: 'ไฟล์ใหญ่เกิน 8MB' });
+    }
+
+    const conv = await inboxService.getConversation(+req.params.id);
+    if (!conv) return res.status(404).json({ success: false, error: 'ไม่พบบทสนทนา' });
+
+    // Only LINE supports image push (Messenger needs different flow)
+    if (conv.channel !== 'line') {
+      return res.status(400).json({ success: false, error: 'รองรับเฉพาะ LINE ในขณะนี้' });
+    }
+
+    // Save image to disk
+    const ext     = mime_type.split('/')[1].replace('jpeg', 'jpg');
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const filePath = path.join(UPLOADS_DIR, safeName);
+    fs.writeFileSync(filePath, Buffer.from(image_base64, 'base64'));
+
+    // Build public URL — LINE must be able to fetch it
+    const appUrl   = process.env.APP_URL || `https://${req.get('host')}`;
+    const imageUrl = `${appUrl}/uploads/${safeName}`;
+
+    // Push image to LINE customer
+    const lc = getLineClient();
+    await lc.pushMessage({
+      to: conv.sender_id,
+      messages: [{
+        type: 'image',
+        originalContentUrl: imageUrl,
+        previewImageUrl:    imageUrl,
+      }],
+    });
+
+    // Save to inbox
+    const staffName = req.user.display_name || req.user.username;
+    const msg = await inboxService.saveMessage(
+      conv.id, 'out', 'staff', imageUrl, staffName, 'image'
+    );
+
+    res.json({ success: true, message: msg, url: imageUrl });
+  } catch (e) {
+    console.error('[inbox] POST reply-image:', e.message);
     res.status(500).json({ success: false, error: e.message });
   }
 });

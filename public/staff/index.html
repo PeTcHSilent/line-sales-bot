@@ -108,6 +108,20 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .btn-send{padding:10px 18px;background:var(--blue);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:.87rem;font-weight:600;transition:background .2s;white-space:nowrap}
 .btn-send:hover{background:var(--blue2)}
 .btn-send:disabled{background:var(--gray2);cursor:not-allowed}
+.btn-img{padding:9px 11px;background:none;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:1rem;transition:border .2s;flex-shrink:0}
+.btn-img:hover{border-color:var(--blue)}
+.btn-img:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Image preview strip ── */
+.img-preview-strip{display:none;background:var(--surface);border-top:1px solid var(--border);padding:10px 16px;align-items:center;gap:12px;flex-shrink:0}
+.img-preview-strip img{height:72px;width:auto;max-width:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.img-preview-strip .preview-actions{display:flex;flex-direction:column;gap:6px}
+.btn-send-img{padding:6px 14px;background:var(--blue);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:background .2s}
+.btn-send-img:hover{background:var(--blue2)}
+.btn-send-img:disabled{background:var(--gray2);cursor:not-allowed}
+.btn-cancel-img{padding:5px 12px;background:none;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-size:.8rem;color:var(--gray);transition:border .2s}
+.btn-cancel-img:hover{border-color:var(--red);color:var(--red)}
+.img-preview-info{font-size:.75rem;color:var(--gray);margin-top:2px}
 
 /* ── Badges ── */
 .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:600}
@@ -384,8 +398,19 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
                 </div>
                 <div class="qr-list" id="qr-list"></div>
               </div>
+              <!-- Image preview strip (hidden until image selected) -->
+              <div class="img-preview-strip" id="img-preview-strip">
+                <img id="img-preview-thumb" src="" alt="preview">
+                <div class="preview-actions">
+                  <button class="btn-send-img" id="btn-send-img" onclick="sendImageReply()">📤 ส่งรูปภาพ</button>
+                  <button class="btn-cancel-img" onclick="cancelImageReply()">✕ ยกเลิก</button>
+                  <div class="img-preview-info" id="img-preview-info"></div>
+                </div>
+              </div>
               <div class="reply-box">
                 <button class="btn-qr" id="btn-qr" onclick="toggleQR()" title="Quick Replies">⚡</button>
+                <button class="btn-img" id="btn-img" onclick="triggerImagePicker()" title="ส่งรูปภาพ">📎</button>
+                <input type="file" id="img-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="onImageFileSelected(event)">
                 <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
                   oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
                 <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
@@ -813,6 +838,72 @@ async function pollMessages() {
   appendMessages(data.messages);
   lastMsgTs = data.messages[data.messages.length - 1].created_at;
   loadConvs();
+}
+
+// ════════════════════════════════════════════
+//  Image reply (staff → customer)
+// ════════════════════════════════════════════
+let _pendingImgBase64 = null;
+let _pendingImgMime   = null;
+let _pendingImgName   = null;
+
+function triggerImagePicker() {
+  if (!activeId) return toast('เลือกบทสนทนาก่อน', 'error');
+  document.getElementById('img-file-input').click();
+}
+
+function onImageFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 8 * 1024 * 1024) {
+    toast('ไฟล์ใหญ่เกิน 8MB', 'error');
+    event.target.value = '';
+    return;
+  }
+  _pendingImgMime = file.type;
+  _pendingImgName = file.name;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    _pendingImgBase64 = e.target.result.split(',')[1];
+    document.getElementById('img-preview-thumb').src = e.target.result;
+    document.getElementById('img-preview-info').textContent =
+      file.name + ' · ' + (file.size / 1024).toFixed(0) + ' KB';
+    document.getElementById('img-preview-strip').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+function cancelImageReply() {
+  _pendingImgBase64 = null;
+  _pendingImgMime   = null;
+  _pendingImgName   = null;
+  document.getElementById('img-preview-strip').style.display = 'none';
+  document.getElementById('img-preview-thumb').src = '';
+  document.getElementById('img-file-input').value  = '';
+}
+
+async function sendImageReply() {
+  if (!activeId || !_pendingImgBase64) return;
+  const btn = document.getElementById('btn-send-img');
+  btn.disabled = true;
+  btn.textContent = 'กำลังส่ง...';
+
+  const r = await api('POST', `/inbox/${activeId}/reply-image`, {
+    image_base64: _pendingImgBase64,
+    filename:     _pendingImgName,
+    mime_type:    _pendingImgMime,
+  });
+
+  btn.disabled = false;
+  btn.textContent = '📤 ส่งรูปภาพ';
+
+  if (r?.success) {
+    toast('ส่งรูปภาพสำเร็จ ✅', 'success');
+    cancelImageReply();
+  } else {
+    toast('ส่งรูปไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
+  }
 }
 
 // ════════════════════════════════════════════

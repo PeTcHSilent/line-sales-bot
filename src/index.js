@@ -51,6 +51,10 @@ app.use('/api/customers',     customerRoutes);
 app.use('/api/keywords',      keywordRoutes);
 app.use('/api/export',        exportRoutes);
 
+// ── Uploaded images (staff → customer) ───────────────────────────
+// LINE fetches images from this public URL when sending to customers
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
 // ── Admin Panel SPA ──────────────────────────────────────────────
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
 app.get('/admin/*', (_req, res) =>
