@@ -203,6 +203,55 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .filter-chip:hover{background:#eff6ff;border-color:var(--blue);color:var(--blue)}
 .filter-chip.active{background:var(--blue);border-color:var(--blue);color:#fff}
 
+/* ── Modal overlay ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:24px 28px;width:360px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-box h3{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:16px}
+.modal-field{margin-bottom:14px}
+.modal-field label{display:block;font-size:.78rem;font-weight:600;color:var(--text2);margin-bottom:4px}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;outline:none;transition:border .2s}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--blue)}
+.modal-field textarea{height:70px;resize:none}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.btn-modal-cancel{padding:8px 18px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text2);font-size:.85rem;font-weight:600;cursor:pointer}
+.btn-modal-ok{padding:8px 18px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer}
+.btn-modal-ok:hover{background:var(--blue2)}
+
+/* ── Follow-up button ── */
+.btn-followup{padding:7px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;background:var(--bg);color:var(--text2);transition:all .2s;white-space:nowrap}
+.btn-followup:hover{background:#ecfdf5;border-color:#16a34a;color:#16a34a}
+.btn-followup.has-followup{background:#ecfdf5;border-color:#16a34a;color:#16a34a}
+
+/* ── Transfer button ── */
+.btn-transfer{padding:7px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;background:var(--bg);color:var(--text2);transition:all .2s;white-space:nowrap}
+.btn-transfer:hover{background:#ede9fe;border-color:#7c3aed;color:#7c3aed}
+
+/* ── Customer profile panel ── */
+.profile-panel{width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transform:translateX(100%);transition:transform .25s;position:absolute;right:0;top:0;bottom:0;z-index:51;overflow-y:auto}
+.profile-panel.open{transform:translateX(0)}
+.profile-header-panel{padding:16px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;background:#fff;z-index:1}
+.profile-header-panel span{font-weight:700;font-size:.95rem}
+.profile-section{padding:12px 16px;border-bottom:1px solid #f3f4f6}
+.profile-section h4{font-size:.75rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.profile-stat-row{display:flex;gap:10px;margin-bottom:8px}
+.profile-stat{flex:1;background:var(--bg);border-radius:8px;padding:8px 10px;text-align:center}
+.profile-stat .val{font-size:1.2rem;font-weight:700;color:var(--blue)}
+.profile-stat .lbl{font-size:.68rem;color:var(--gray);margin-top:1px}
+.profile-conv-item{padding:8px 0;border-bottom:1px solid #f5f5f5;cursor:pointer;font-size:.8rem}
+.profile-conv-item:last-child{border-bottom:none}
+.profile-conv-item:hover{color:var(--blue)}
+.profile-tag-list{display:flex;flex-wrap:wrap;gap:4px}
+.profile-note-item{background:#fefce8;border:1px solid #fef08a;border-radius:6px;padding:6px 8px;margin-bottom:6px;font-size:.78rem}
+.profile-note-meta{font-size:.68rem;color:#92400e;margin-bottom:3px}
+.btn-open-profile{padding:7px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;background:var(--bg);color:var(--text2);transition:all .2s;white-space:nowrap}
+.btn-open-profile:hover{background:#eff6ff;border-color:var(--blue);color:var(--blue)}
+.btn-open-profile.active{background:#eff6ff;border-color:var(--blue);color:var(--blue)}
+
+/* ── Image message ── */
+.inbox-bubble img{max-width:220px;max-height:220px;border-radius:10px;display:block;cursor:pointer}
+.inbox-bubble img:hover{opacity:.9}
+
 /* ── Responsive ── */
 @media(max-width:640px){
   .conv-sidebar{width:100%;position:absolute;z-index:10;height:100%;left:0;top:0;transform:translateX(-100%);transition:transform .3s}
@@ -350,6 +399,55 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
       </div>
     </div>
   </div>
+</div>
+
+<!-- ── Follow-up Modal ── -->
+<div class="modal-overlay" id="followup-modal">
+  <div class="modal-box">
+    <h3>📅 ตั้งนัดติดตาม</h3>
+    <div class="modal-field">
+      <label>วันที่ติดตาม</label>
+      <input type="date" id="fu-date">
+    </div>
+    <div class="modal-field">
+      <label>โน้ต (ไม่บังคับ)</label>
+      <textarea id="fu-note" placeholder="เช่น โทรถามเรื่องราคา, ส่งใบเสนอราคา..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal('followup-modal')">ยกเลิก</button>
+      <button class="btn-modal-ok" onclick="saveFollowUp()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Transfer Modal ── -->
+<div class="modal-overlay" id="transfer-modal">
+  <div class="modal-box">
+    <h3>🔀 โอนงานให้พนักงาน</h3>
+    <div class="modal-field">
+      <label>พนักงานที่รับงาน</label>
+      <select id="transfer-staff-sel">
+        <option value="">— กำลังโหลด —</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>โน้ตส่งงาน (ไม่บังคับ)</label>
+      <textarea id="transfer-note" placeholder="เช่น ลูกค้าสนใจแผน Gold, ติดต่อได้หลัง 15.00 น."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal('transfer-modal')">ยกเลิก</button>
+      <button class="btn-modal-ok" onclick="confirmTransfer()">โอนงาน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Customer Profile Panel ── -->
+<div class="profile-panel" id="profile-panel">
+  <div class="profile-header-panel">
+    <span>👤 โปรไฟล์ลูกค้า</span>
+    <button class="btn-notes-close" onclick="closeProfile()">✕</button>
+  </div>
+  <div id="profile-content"><div style="padding:20px;text-align:center;color:var(--gray)">กำลังโหลด...</div></div>
 </div>
 
 <!-- Toast -->
@@ -601,6 +699,9 @@ function updateChatHeader(conv) {
     modeButtons = `<button class="btn btn-gray" onclick="setMode('bot')">🔄 เปิดใหม่</button>`;
   }
   acts.innerHTML = modeButtons + `
+    <button class="btn-followup" id="btn-followup" onclick="openFollowUpModal()">📅 ติดตาม</button>
+    <button class="btn-transfer" onclick="openTransferModal()">🔀 โอน</button>
+    <button class="btn-open-profile" id="btn-profile" onclick="toggleProfile()">👤 โปรไฟล์</button>
     <button class="btn-notes${notesOpen ? ' active' : ''}" id="btn-notes" onclick="toggleNotes()">📝 โน้ต</button>
   `;
 }
@@ -647,9 +748,17 @@ function buildMsgEl(m) {
     ? fmtTime(m.created_at)
     : `${m.sender === 'bot' ? '🤖 AI' : '🧑 ' + escHtml(m.sender_name || 'พนักงาน')} · ${fmtTime(m.created_at)}`;
 
+  // Render image messages
+  let bubbleBody;
+  if (m.msg_type === 'image' && m.content) {
+    bubbleBody = `<img src="${escHtml(m.content)}" alt="รูปภาพ" onclick="window.open('${escHtml(m.content)}','_blank')" loading="lazy">`;
+  } else {
+    bubbleBody = escHtml(m.content);
+  }
+
   wrap.innerHTML = `
     <div class="inbox-bubble-label">${senderLabel}</div>
-    <div class="inbox-bubble ${bubbleClass}">${escHtml(m.content)}</div>
+    <div class="inbox-bubble ${bubbleClass}">${bubbleBody}</div>
   `;
   return wrap;
 }
@@ -1000,6 +1109,169 @@ function applyFilter(chip) {
   // lead_type filter via URL param in loadConvs
   window._filterLead = lead;
   loadConvs();
+}
+
+// ════════════════════════════════════════════
+//  Modal helper
+// ════════════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// Close modal on overlay click
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+});
+
+// ════════════════════════════════════════════
+//  Follow-up Scheduler
+// ════════════════════════════════════════════
+let followUps = [];
+
+function openFollowUpModal() {
+  if (!activeId) return;
+  // Default date = tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('fu-date').value = tomorrow.toISOString().split('T')[0];
+  document.getElementById('fu-note').value = '';
+  document.getElementById('followup-modal').classList.add('open');
+}
+
+async function saveFollowUp() {
+  if (!activeId) return;
+  const due_date = document.getElementById('fu-date').value;
+  const note     = document.getElementById('fu-note').value.trim();
+  if (!due_date) { toast('กรุณาเลือกวันที่', 'error'); return; }
+
+  const r = await api('POST', '/follow-ups', { conversation_id: activeId, due_date, note });
+  closeModal('followup-modal');
+  if (r?.success) {
+    toast('📅 บันทึกนัดติดตามแล้ว', 'success');
+    document.getElementById('btn-followup')?.classList.add('has-followup');
+  } else {
+    toast('บันทึกไม่สำเร็จ', 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+//  Conversation Transfer
+// ════════════════════════════════════════════
+let staffList = [];
+
+async function loadStaffList() {
+  if (staffList.length) return staffList;
+  const r = await api('GET', '/admin/users');
+  if (r?.success) staffList = r.users.filter(u => u.is_active);
+  return staffList;
+}
+
+async function openTransferModal() {
+  if (!activeId) return;
+  document.getElementById('transfer-note').value = '';
+  await loadStaffList();
+  const sel = document.getElementById('transfer-staff-sel');
+  const conv = convs.find(c => c.id === activeId);
+  sel.innerHTML = staffList
+    .filter(u => u.id !== conv?.assigned_to)
+    .map(u => `<option value="${u.id}">${escHtml(u.display_name || u.username)} (${u.role})</option>`)
+    .join('');
+  if (!sel.options.length) {
+    sel.innerHTML = '<option value="">ไม่มีพนักงานอื่น</option>';
+  }
+  document.getElementById('transfer-modal').classList.add('open');
+}
+
+async function confirmTransfer() {
+  if (!activeId) return;
+  const new_assigned_to = +document.getElementById('transfer-staff-sel').value;
+  const note = document.getElementById('transfer-note').value.trim();
+  if (!new_assigned_to) { toast('กรุณาเลือกพนักงาน', 'error'); return; }
+
+  const r = await api('PATCH', `/inbox/${activeId}/transfer`, { new_assigned_to, note });
+  closeModal('transfer-modal');
+  if (r?.success) {
+    toast('🔀 โอนงานสำเร็จ', 'success');
+    await loadConvs();
+    // Update header
+    const conv = convs.find(c => c.id === activeId);
+    if (conv) updateChatHeader(conv);
+  } else {
+    toast(r?.error || 'เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+//  Customer Profile Page
+// ════════════════════════════════════════════
+let profileOpen = false;
+
+async function toggleProfile() {
+  profileOpen = !profileOpen;
+  document.getElementById('profile-panel').classList.toggle('open', profileOpen);
+  document.getElementById('btn-profile')?.classList.toggle('active', profileOpen);
+  if (profileOpen && activeId) {
+    const conv = convs.find(c => c.id === activeId);
+    if (conv) await loadProfile(conv.sender_id, conv.channel);
+  }
+}
+
+function closeProfile() {
+  profileOpen = false;
+  document.getElementById('profile-panel').classList.remove('open');
+  document.getElementById('btn-profile')?.classList.remove('active');
+}
+
+async function loadProfile(senderId, channel) {
+  const el = document.getElementById('profile-content');
+  el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray)">กำลังโหลด...</div>';
+  const r = await api('GET', `/customers/${encodeURIComponent(senderId)}?channel=${channel}`);
+  if (!r?.success) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red)">โหลดข้อมูลไม่สำเร็จ</div>';
+    return;
+  }
+  const p = r.profile;
+  const allConvTags = p.tags || [];
+  const tagChips = allConvTags.map(t =>
+    `<span class="tag-chip" style="background:${t.color}">${escHtml(t.name)}</span>`
+  ).join('') || '<span style="color:var(--gray2);font-size:.78rem">ยังไม่มี tag</span>';
+
+  const convItems = (p.conversations || []).map(c => `
+    <div class="profile-conv-item" onclick="openConv(${c.id})">
+      <strong>${escHtml(c.display_name || 'ไม่ทราบชื่อ')}</strong> · ${fmtTime(c.last_message_at)}<br>
+      <span style="color:var(--gray);font-size:.72rem">${escHtml(c.last_message || '—')}</span>
+    </div>
+  `).join('') || '<div style="color:var(--gray2);font-size:.78rem">ยังไม่มีบทสนทนา</div>';
+
+  const noteItems = (p.notes || []).map(n => `
+    <div class="profile-note-item">
+      <div class="profile-note-meta">${escHtml(n.author_name || '?')} · ${fmtTime(n.created_at)}</div>
+      <div>${escHtml(n.content)}</div>
+    </div>
+  `).join('') || '<div style="color:var(--gray2);font-size:.78rem">ยังไม่มีโน้ต</div>';
+
+  el.innerHTML = `
+    <div class="profile-section">
+      <div style="font-weight:700;font-size:1.05rem;margin-bottom:6px">${escHtml(p.display_name || 'ไม่ทราบชื่อ')}</div>
+      <div style="font-size:.75rem;color:var(--gray);margin-bottom:10px">${escHtml(senderId)}</div>
+      <div class="profile-stat-row">
+        <div class="profile-stat"><div class="val">${p.total_conversations || 0}</div><div class="lbl">บทสนทนา</div></div>
+        <div class="profile-stat"><div class="val">${p.total_messages || 0}</div><div class="lbl">ข้อความ</div></div>
+        <div class="profile-stat"><div class="val">${p.total_notes || 0}</div><div class="lbl">โน้ต</div></div>
+      </div>
+    </div>
+    <div class="profile-section">
+      <h4>Tags</h4>
+      <div class="profile-tag-list">${tagChips}</div>
+    </div>
+    <div class="profile-section">
+      <h4>โน้ต</h4>
+      ${noteItems}
+    </div>
+    <div class="profile-section">
+      <h4>ประวัติบทสนทนา</h4>
+      ${convItems}
+    </div>
+  `;
 }
 
 // ════════════════════════════════════════════

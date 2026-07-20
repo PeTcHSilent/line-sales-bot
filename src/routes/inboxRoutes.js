@@ -147,6 +147,35 @@ router.patch('/:id/lead_type', requireAuth, async (req, res) => {
   }
 });
 
+// ── PATCH /api/inbox/:id/transfer — โอนงานให้พนักงานอื่น ──────────
+router.patch('/:id/transfer', requireAuth, async (req, res) => {
+  try {
+    const { new_assigned_to, note } = req.body;
+    if (!new_assigned_to) return res.status(400).json({ success: false, error: 'new_assigned_to ต้องระบุ' });
+
+    const conv = await inboxService.getConversation(+req.params.id);
+    if (!conv) return res.status(404).json({ success: false, error: 'ไม่พบบทสนทนา' });
+
+    // Assign
+    const updated = await inboxService.setAssignedTo(+req.params.id, +new_assigned_to);
+
+    // Save system message
+    const db = require('../db');
+    const staffRow = await db.query('SELECT display_name FROM admin_users WHERE id=$1', [+new_assigned_to]);
+    const toName   = staffRow.rows[0]?.display_name || `User #${new_assigned_to}`;
+    const fromName = req.user.display_name || req.user.username;
+    const sysMsg   = note?.trim()
+      ? `🔀 โอนงานจาก ${fromName} ไปยัง ${toName}\n📝 ${note.trim()}`
+      : `🔀 โอนงานจาก ${fromName} ไปยัง ${toName}`;
+
+    await inboxService.saveMessage(conv.id, 'out', 'system', sysMsg, 'ระบบ');
+
+    res.json({ success: true, conversation: updated, to_name: toName });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // ── PATCH /api/inbox/:id/assign — assign to staff ────────────────
 router.patch('/:id/assign', requireAuth, async (req, res) => {
   try {

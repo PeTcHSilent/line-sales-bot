@@ -241,6 +241,9 @@
     <div class="nav-item" onclick="showPage('broadcast')" id="nav-broadcast">
       <span class="icon">📣</span> Broadcast
     </div>
+    <div class="nav-item" onclick="showPage('keywords')" id="nav-keywords">
+      <span class="icon">🔑</span> Keyword Rules
+    </div>
     <div class="nav-section">ระบบ</div>
     <div class="nav-item" onclick="showPage('usage')" id="nav-usage">
       <span class="icon">📈</span> AI Usage & Cost
@@ -303,6 +306,17 @@
           <div class="stat-card green"><div class="val" id="as-resolved">—</div><div class="lbl">ปิดสัปดาห์นี้</div></div>
           <div class="stat-card red"><div class="val" id="as-human">—</div><div class="lbl">Human Mode</div></div>
           <div class="stat-card"><div class="val" id="as-resp">—</div><div class="lbl">เฉลี่ยตอบ (นาที)</div></div>
+        </div>
+
+        <!-- Export CSV -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><h3>📥 Export ข้อมูล</h3></div>
+          <div class="card-body" style="padding:16px 20px;display:flex;gap:12px;flex-wrap:wrap">
+            <a class="btn btn-blue btn-sm" href="/api/export/conversations" download>⬇️ Export บทสนทนาทั้งหมด (.csv)</a>
+            <a class="btn btn-blue btn-sm" href="/api/export/leads?lead_type=new" download>⬇️ Leads ใหม่ (.csv)</a>
+            <a class="btn btn-blue btn-sm" href="/api/export/leads?lead_type=renewal" download>⬇️ Leads ต่ออายุ (.csv)</a>
+            <a class="btn btn-sm" style="background:#059669;color:#fff" href="/api/export/conversations?mode=human" download>⬇️ Human Mode (.csv)</a>
+          </div>
         </div>
 
         <div class="card" style="margin-bottom:20px">
@@ -528,6 +542,47 @@
           </div>
         </div>
 
+        <!-- Out-of-hours Auto Reply -->
+        <div class="card" style="max-width:640px;margin-bottom:20px">
+          <div class="card-header"><h3>🌙 ตอบอัตโนมัตินอกเวลางาน</h3></div>
+          <div class="card-body" style="padding:20px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <label style="font-weight:600;font-size:.9rem">เปิดใช้งาน OOH Auto Reply</label>
+              <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+                <input type="checkbox" id="s-ooh-enabled" style="opacity:0;width:0;height:0">
+                <span id="ooh-toggle" onclick="toggleOOH()" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s"></span>
+              </label>
+              <span id="ooh-status-label" style="font-size:.82rem;color:var(--gray)">ปิดอยู่</span>
+            </div>
+            <div class="field-group" style="margin-bottom:16px">
+              <label>ข้อความตอบกลับนอกเวลางาน</label>
+              <textarea id="s-ooh-message" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;outline:none;resize:vertical;transition:border .2s" placeholder="เช่น ขอบคุณที่ติดต่อมาครับ..."></textarea>
+            </div>
+            <button class="btn btn-blue btn-sm" onclick="saveOOHSettings()">💾 บันทึก</button>
+          </div>
+        </div>
+
+        <!-- SLA Alert -->
+        <div class="card" style="max-width:640px;margin-bottom:20px">
+          <div class="card-header"><h3>⚠️ SLA Alert — แจ้งเตือนตอบช้า</h3></div>
+          <div class="card-body" style="padding:20px">
+            <div class="form-row" style="margin-bottom:16px">
+              <div class="field-group">
+                <label>แจ้งเตือนเมื่อรอเกิน (นาที)</label>
+                <input type="number" id="s-sla-minutes" min="5" max="1440" value="30" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+              </div>
+              <div class="field-group">
+                <label>LINE ID หัวหน้า (supervisor)</label>
+                <input type="text" id="s-sla-supervisor" placeholder="Uxxxxxxxx..." style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+              </div>
+            </div>
+            <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#92400e;margin-bottom:16px">
+              ⚠️ ระบบจะแจ้งเตือนพนักงานที่รับผิดชอบ + หัวหน้า (ถ้าระบุ) เมื่อไม่มีการตอบกลับในเวลาที่กำหนด
+            </div>
+            <button class="btn btn-blue btn-sm" onclick="saveSLASettings()">💾 บันทึก</button>
+          </div>
+        </div>
+
         <!-- Sync จาก HR -->
         <div class="card" style="max-width:640px;margin-bottom:20px">
           <div class="card-header">
@@ -686,6 +741,52 @@
             🆕 <strong>งานใหม่</strong> (new_business) — รับแจ้งเตือนเฉพาะ Lead ลูกค้าใหม่<br>
             🔄 <strong>ต่ออายุ</strong> (renewal) — รับแจ้งเตือนเฉพาะ Lead ต่ออายุ/ต่อประกัน<br>
             🔀 <strong>ทั้งสองประเภท</strong> (both) — รับแจ้งเตือนทุก Lead (ค่าเริ่มต้น)
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Keyword Rules ── -->
+      <div id="page-keywords" style="display:none">
+        <div class="card" style="max-width:700px;margin-bottom:20px">
+          <div class="card-header">
+            <h3>➕ เพิ่ม Keyword Rule</h3>
+          </div>
+          <div class="card-body" style="padding:20px">
+            <div class="form-row" style="margin-bottom:12px">
+              <div class="field-group">
+                <label>Keyword</label>
+                <input type="text" id="kw-keyword" placeholder="เช่น ราคา, สนใจ, ต่ออายุ" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+              </div>
+              <div class="field-group">
+                <label>ประเภทการจับคู่</label>
+                <select id="kw-match-type" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+                  <option value="contains">contains — ข้อความมีคีย์เวิร์ดอยู่</option>
+                  <option value="exact">exact — ตรงทั้งประโยค</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label>Priority (สูง = ตรวจก่อน)</label>
+                <input type="number" id="kw-priority" value="0" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem">
+              </div>
+            </div>
+            <div class="field-group" style="margin-bottom:14px">
+              <label>ข้อความตอบกลับ</label>
+              <textarea id="kw-response" rows="3" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;resize:vertical" placeholder="ข้อความที่ bot จะตอบเมื่อพบ keyword นี้..."></textarea>
+            </div>
+            <button class="btn btn-blue btn-sm" onclick="saveKeywordRule()">💾 บันทึก Rule</button>
+          </div>
+        </div>
+
+        <div class="card" style="max-width:700px">
+          <div class="card-header">
+            <h3>🔑 Keyword Rules ทั้งหมด</h3>
+            <button class="btn btn-ghost btn-sm" onclick="loadKeywords()">🔄</button>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>Keyword</th><th>ประเภท</th><th>Priority</th><th>ข้อความตอบ</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+              <tbody id="keywords-tbody"><tr class="empty-row"><td colspan="6">กำลังโหลด...</td></tr></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1023,13 +1124,14 @@ const PAGE_TITLES = {
   staff:     '🧑‍💼 ข้อมูลพนักงาน',
   analytics: '📊 Analytics',
   broadcast: '📣 Broadcast',
+  keywords:  '🔑 Keyword Auto-reply Rules',
   usage:     '📈 AI Usage & Cost',
   settings:  '⚙️ ตั้งค่าระบบ',
 };
 
 function showPage(name) {
   currentPageName = name;
-  ['dashboard','leads','inbox','groups','staff','analytics','broadcast','usage','settings'].forEach(p => {
+  ['dashboard','leads','inbox','groups','staff','analytics','broadcast','keywords','usage','settings'].forEach(p => {
     const el = document.getElementById('page-'+p);
     if (el) el.style.display = p===name ? 'block' : 'none';
     const nav = document.getElementById('nav-'+p);
@@ -1044,6 +1146,7 @@ function showPage(name) {
   if (name === 'staff')     loadStaff();
   if (name === 'analytics') loadAnalytics();
   if (name === 'broadcast') loadBroadcastPage();
+  if (name === 'keywords')  loadKeywords();
   if (name === 'usage')     loadUsagePage();
   if (name === 'settings')  loadSettings();
 }
@@ -1645,6 +1748,40 @@ async function loadSettings() {
       cb.checked = days.includes(Number(cb.value));
     });
   }
+  // OOH
+  const oohEnabled = s.ooh_enabled === 'true';
+  document.getElementById('s-ooh-enabled').checked = oohEnabled;
+  document.getElementById('ooh-toggle').style.background = oohEnabled ? '#16a34a' : '#ccc';
+  document.getElementById('ooh-toggle').style.transform = oohEnabled ? 'translateX(20px)' : '';
+  document.getElementById('ooh-status-label').textContent = oohEnabled ? 'เปิดอยู่' : 'ปิดอยู่';
+  if (s.ooh_message) document.getElementById('s-ooh-message').value = s.ooh_message;
+  // SLA
+  if (s.sla_minutes) document.getElementById('s-sla-minutes').value = s.sla_minutes;
+  if (s.sla_supervisor_line_id) document.getElementById('s-sla-supervisor').value = s.sla_supervisor_line_id;
+}
+
+function toggleOOH() {
+  const cb = document.getElementById('s-ooh-enabled');
+  cb.checked = !cb.checked;
+  const on = cb.checked;
+  document.getElementById('ooh-toggle').style.background = on ? '#16a34a' : '#ccc';
+  document.getElementById('ooh-status-label').textContent = on ? 'เปิดอยู่' : 'ปิดอยู่';
+}
+
+async function saveOOHSettings() {
+  const ooh_enabled = document.getElementById('s-ooh-enabled').checked ? 'true' : 'false';
+  const ooh_message = document.getElementById('s-ooh-message').value.trim();
+  const r = await api('PUT', '/admin/settings', { ooh_enabled, ooh_message });
+  if (r?.success) toast('บันทึก OOH settings สำเร็จ ✅');
+  else toast('เกิดข้อผิดพลาด', 'error');
+}
+
+async function saveSLASettings() {
+  const sla_minutes = document.getElementById('s-sla-minutes').value;
+  const sla_supervisor_line_id = document.getElementById('s-sla-supervisor').value.trim();
+  const r = await api('PUT', '/admin/settings', { sla_minutes, sla_supervisor_line_id });
+  if (r?.success) toast('บันทึก SLA settings สำเร็จ ✅');
+  else toast('เกิดข้อผิดพลาด', 'error');
 }
 
 async function saveNotifySettings() {
@@ -1657,6 +1794,67 @@ async function saveNotifySettings() {
   const r = await api('PUT', '/admin/settings', { work_start, work_end, work_days });
   if (r?.success) toast('บันทึกการตั้งค่าสำเร็จ ✅');
   else toast('เกิดข้อผิดพลาด', 'error');
+}
+
+// ════════════════════════════════════════════
+//  Keyword Auto-reply Rules
+// ════════════════════════════════════════════
+async function loadKeywords() {
+  const r = await api('GET', '/keywords');
+  const tbody = document.getElementById('keywords-tbody');
+  if (!tbody) return;
+  if (!r?.success || !r.rules.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">ยังไม่มี Keyword Rule</td></tr>';
+    return;
+  }
+  tbody.innerHTML = r.rules.map(kw => `
+    <tr>
+      <td><strong>${escHtml(kw.keyword)}</strong></td>
+      <td><span class="badge" style="background:#ede9fe;color:#6d28d9">${kw.match_type}</span></td>
+      <td style="text-align:center">${kw.priority}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(kw.response)}">${escHtml(kw.response)}</td>
+      <td>
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-size:.8rem">
+          <input type="checkbox" ${kw.is_active ? 'checked' : ''} onchange="toggleKeyword(${kw.id}, this.checked)">
+          ${kw.is_active ? '<span style="color:var(--green)">เปิด</span>' : '<span style="color:var(--gray)">ปิด</span>'}
+        </label>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-ghost" onclick="deleteKeyword(${kw.id})">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function saveKeywordRule() {
+  const keyword    = document.getElementById('kw-keyword').value.trim();
+  const response   = document.getElementById('kw-response').value.trim();
+  const match_type = document.getElementById('kw-match-type').value;
+  const priority   = document.getElementById('kw-priority').value;
+
+  if (!keyword || !response) { toast('กรุณากรอก keyword และข้อความตอบ', 'error'); return; }
+
+  const r = await api('POST', '/keywords', { keyword, response, match_type, priority: +priority });
+  if (r?.success) {
+    toast('เพิ่ม Keyword Rule แล้ว ✅', 'success');
+    document.getElementById('kw-keyword').value  = '';
+    document.getElementById('kw-response').value = '';
+    await loadKeywords();
+  } else {
+    toast(r?.error || 'เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+async function toggleKeyword(id, is_active) {
+  await api('PUT', `/keywords/${id}`, { is_active });
+  toast(is_active ? 'เปิด Rule แล้ว' : 'ปิด Rule แล้ว', 'info');
+}
+
+async function deleteKeyword(id) {
+  if (!confirm('ลบ Keyword Rule นี้?')) return;
+  await api('DELETE', `/keywords/${id}`);
+  toast('ลบแล้ว', 'info');
+  await loadKeywords();
 }
 
 // ════════════════════════════════════════════

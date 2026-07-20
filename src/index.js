@@ -14,7 +14,13 @@ const quickRepliesRoutes = require('./routes/quickRepliesRoutes');
 const notesRoutes        = require('./routes/notesRoutes');
 const dashboardRoutes    = require('./routes/dashboardRoutes');
 const broadcastRoutes    = require('./routes/broadcastRoutes');
+const followUpRoutes     = require('./routes/followUpRoutes');
+const customerRoutes     = require('./routes/customerRoutes');
+const keywordRoutes      = require('./routes/keywordRoutes');
+const exportRoutes       = require('./routes/exportRoutes');
 const hrSync        = require('./services/hrSyncService');
+const followUpCron  = require('./cron/followUpCron');
+const slaCron       = require('./cron/slaCron');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -40,6 +46,10 @@ app.use('/api/quick-replies', quickRepliesRoutes);
 app.use('/api/notes',         notesRoutes);
 app.use('/api/dashboard',     dashboardRoutes);
 app.use('/api/broadcast',     broadcastRoutes);
+app.use('/api/follow-ups',    followUpRoutes);
+app.use('/api/customers',     customerRoutes);
+app.use('/api/keywords',      keywordRoutes);
+app.use('/api/export',        exportRoutes);
 
 // ── Admin Panel SPA ──────────────────────────────────────────────
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
@@ -76,6 +86,8 @@ app.listen(PORT, () => {
     console.log('[server] FB_PAGE_ACCESS_TOKEN not set — Messenger disabled');
   }
   hrSync.startAutoSync();
+  followUpCron.start();
+  slaCron.start();
 });
 
 module.exports = app;

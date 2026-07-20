@@ -254,7 +254,7 @@ router.get('/settings', requireAuth, async (req, res) => {
 // ── PUT /api/admin/settings ── บันทึกค่าตั้งค่าระบบ ────────────
 router.put('/settings', requireAuth, async (req, res) => {
   try {
-    const allowed = ['work_start', 'work_end', 'work_days'];
+    const allowed = ['work_start', 'work_end', 'work_days', 'ooh_enabled', 'ooh_message', 'sla_minutes', 'sla_supervisor_line_id'];
     const entries = Object.entries(req.body).filter(([k]) => allowed.includes(k));
     if (!entries.length) return res.status(400).json({ success: false, error: 'No valid settings' });
 
