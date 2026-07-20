@@ -463,11 +463,11 @@ mark.msg-hl.current{background:#f97316;color:#fff}
               </div>
               <div class="reply-box">
                 <button class="btn-qr" id="btn-qr" onclick="toggleQR()" title="Quick Replies">⚡</button>
-                <button class="btn-img" id="btn-img" onclick="triggerImagePicker()" title="ส่งรูปภาพ">📎</button>
+                <button class="btn-img" id="btn-img" onclick="triggerImagePicker()" title="ส่งรูปภาพ (หรือ Ctrl+V วางจาก Clipboard)">📎</button>
                 <button class="btn-file" id="btn-file" onclick="triggerFilePicker()" title="ส่งไฟล์ PDF/เอกสาร">📄</button>
                 <input type="file" id="img-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="onImageFileSelected(event)">
                 <input type="file" id="doc-file-input" accept=".pdf,.docx,.doc,.xlsx,.xls" style="display:none" onchange="onDocFileSelected(event)">
-                <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
+                <textarea id="reply-input" placeholder="พิมพ์ข้อความ... (Ctrl+V เพื่อวางรูปภาพ)" rows="1"
                   oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
                 <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
               </div>
@@ -1167,6 +1167,53 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     toggleMsgSearch();
   }
+});
+
+// ════════════════════════════════════════════
+//  Paste image from clipboard (Ctrl+V / screenshot)
+// ════════════════════════════════════════════
+document.addEventListener('paste', (e) => {
+  // ต้องมี conversation active
+  if (!activeId) return;
+
+  const items = Array.from(e.clipboardData?.items || []);
+  const imageItem = items.find(item => item.type.startsWith('image/'));
+  if (!imageItem) return; // ไม่มีรูปใน clipboard → ปล่อยให้ paste ปกติ
+
+  // ถ้า textarea กำลัง focus และ clipboard มีทั้งข้อความและรูป → paste ข้อความตามปกติ
+  const isTextareaActive = document.activeElement?.id === 'reply-input';
+  const hasText = items.some(i => i.type === 'text/plain');
+  if (isTextareaActive && hasText) return;
+
+  e.preventDefault(); // หยุด default paste behavior
+
+  const file = imageItem.getAsFile();
+  if (!file) return;
+
+  if (file.size > 8 * 1024 * 1024) {
+    toast('รูปภาพใหญ่เกิน 8MB', 'error');
+    return;
+  }
+
+  // ปิด file-preview-strip ถ้าเปิดอยู่ (replace pending file with image)
+  cancelFileReply();
+
+  const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+  _pendingImgMime = file.type;
+  _pendingImgName = `paste-${Date.now()}.${ext}`;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    _pendingImgBase64 = ev.target.result.split(',')[1];
+    document.getElementById('img-preview-thumb').src = ev.target.result;
+    document.getElementById('img-preview-info').textContent =
+      'รูปจาก Clipboard · ' + (file.size / 1024).toFixed(0) + ' KB';
+    document.getElementById('img-preview-strip').style.display = 'flex';
+    // Scroll preview into view
+    document.getElementById('img-preview-strip').scrollIntoView({ block: 'nearest' });
+    toast('วางรูปจาก Clipboard แล้ว — กด "ส่งรูปภาพ" เพื่อส่ง', 'info');
+  };
+  reader.readAsDataURL(file);
 });
 
 // ════════════════════════════════════════════
