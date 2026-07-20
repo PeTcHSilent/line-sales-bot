@@ -48,6 +48,8 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .top-bar .user-info{display:flex;align-items:center;gap:12px;font-size:.82rem;color:var(--sidebar-text)}
 .btn-logout{padding:5px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;cursor:pointer;font-size:.78rem;transition:background .2s}
 .btn-logout:hover{background:rgba(255,255,255,.2)}
+.btn-notif{background:none;border:none;color:#fff;font-size:1.05rem;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background .2s;line-height:1}
+.btn-notif:hover{background:rgba(255,255,255,.15)}
 
 .main-area{display:flex;flex:1;overflow:hidden}
 
@@ -347,6 +349,7 @@ mark.msg-hl.current{background:#f97316;color:#fff}
     </div>
     <div class="user-info">
       <span id="user-display">—</span>
+      <button class="btn-notif" id="btn-notif" onclick="toggleNotif()" title="เปิด/ปิดการแจ้งเตือน">🔔</button>
       <button class="btn-logout" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
@@ -561,6 +564,10 @@ let pollTimer     = null;
 let renderedIds   = new Set();
 let searchTimer   = null;
 
+// Browser notification state
+let _notifEnabled   = localStorage.getItem('sb_notif') !== 'false'; // default on
+let _knownUnreadIds = new Set(); // conv IDs that were unread last check
+
 // Tags & Quick Replies state
 let allTags      = [];
 let convTags     = [];
@@ -636,6 +643,9 @@ async function startApp() {
 
   await Promise.all([loadConvs(), loadAllTags(), loadQuickReplies()]);
 
+  // Init notifications (request permission, restore preference)
+  initNotif();
+
   // Poll every 5 seconds for new messages in active conv
   clearInterval(pollTimer);
   pollTimer = setInterval(pollMessages, 5000);
@@ -670,7 +680,24 @@ async function loadConvs() {
   const data = await api('GET', '/inbox?' + params.toString());
   if (!data?.success) return;
 
+  const prevUnread = _knownUnreadIds;
   convs = data.conversations || [];
+
+  // Detect conversations that became unread since last check
+  _knownUnreadIds = new Set(convs.filter(c => c.unread_count > 0).map(c => c.id));
+  _knownUnreadIds.forEach(id => {
+    // Skip active conv (pollMessages handles that)
+    if (id === activeId) return;
+    if (!prevUnread.has(id)) {
+      const conv = convs.find(c => c.id === id);
+      if (conv) {
+        const name = conv.display_name || 'ลูกค้า';
+        const preview = conv.last_message || 'มีข้อความใหม่';
+        showNotif(`💬 ข้อความใหม่จาก ${name}`, preview, id);
+      }
+    }
+  });
+
   renderConvList();
 }
 
@@ -905,6 +932,117 @@ async function pollMessages() {
   appendMessages(data.messages);
   lastMsgTs = data.messages[data.messages.length - 1].created_at;
   loadConvs();
+
+  // Notify for incoming messages when tab is not focused
+  if (document.visibilityState !== 'visible') {
+    const incoming = data.messages.filter(m => m.direction === 'in');
+    if (incoming.length > 0) {
+      const conv = convs.find(c => c.id === activeId);
+      const name = conv?.display_name || 'ลูกค้า';
+      const last = incoming[incoming.length - 1];
+      const preview = last.msg_type === 'image'  ? '📷 รูปภาพ'
+                    : last.msg_type === 'file'    ? '📄 ไฟล์แนบ'
+                    : last.msg_type === 'sticker' ? '😊 สติ๊กเกอร์'
+                    : (last.content || 'ข้อความใหม่').slice(0, 80);
+      showNotif(`💬 ${name}`, preview, activeId);
+    }
+  }
+}
+
+// ════════════════════════════════════════════
+//  Browser Notifications
+// ════════════════════════════════════════════
+async function initNotif() {
+  // Request permission if enabled by preference and not yet decided
+  if (_notifEnabled && Notification.permission === 'default') {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      _notifEnabled = false;
+      localStorage.setItem('sb_notif', 'false');
+    }
+  }
+  updateNotifBtn();
+}
+
+function toggleNotif() {
+  if (_notifEnabled) {
+    // Turn off
+    _notifEnabled = false;
+    localStorage.setItem('sb_notif', 'false');
+    updateNotifBtn();
+    toast('ปิดการแจ้งเตือนแล้ว 🔕');
+  } else {
+    // Turn on — need permission
+    if (Notification.permission === 'denied') {
+      toast('กรุณาอนุญาต Notification ในการตั้งค่าเบราว์เซอร์ก่อน', 'error');
+      return;
+    }
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(perm => {
+        if (perm === 'granted') {
+          _notifEnabled = true;
+          localStorage.setItem('sb_notif', 'true');
+          updateNotifBtn();
+          toast('เปิดการแจ้งเตือนแล้ว 🔔');
+        } else {
+          toast('ไม่ได้รับอนุญาต กรุณาเปิดใน Settings เบราว์เซอร์', 'error');
+        }
+      });
+      return;
+    }
+    _notifEnabled = true;
+    localStorage.setItem('sb_notif', 'true');
+    updateNotifBtn();
+    toast('เปิดการแจ้งเตือนแล้ว 🔔');
+  }
+}
+
+function updateNotifBtn() {
+  const btn = document.getElementById('btn-notif');
+  if (!btn) return;
+  const on = _notifEnabled && Notification.permission === 'granted';
+  btn.textContent = on ? '🔔' : '🔕';
+  btn.title       = on ? 'แจ้งเตือนเปิดอยู่ — คลิกเพื่อปิด' : 'แจ้งเตือนปิดอยู่ — คลิกเพื่อเปิด';
+  btn.style.opacity = on ? '1' : '0.45';
+}
+
+function showNotif(title, body, convId) {
+  if (!_notifEnabled) return;
+  if (Notification.permission !== 'granted') return;
+  // Don't notify if tab is visible AND it's the active conversation
+  if (document.visibilityState === 'visible' && convId === activeId) return;
+
+  notifBeep();
+
+  const n = new Notification(title, {
+    body,
+    icon: '/favicon.ico',
+    tag: `conv-${convId}`,    // group: same conv collapses into one notification
+    renotify: true,
+  });
+  n.onclick = () => {
+    window.focus();
+    if (convId) openConv(convId);
+    n.close();
+  };
+}
+
+function notifBeep() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    // Two-tone: 880 Hz → 1100 Hz
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (_) { /* AudioContext not supported — skip */ }
 }
 
 // ════════════════════════════════════════════
