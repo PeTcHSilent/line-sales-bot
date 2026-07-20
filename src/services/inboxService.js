@@ -138,7 +138,42 @@ async function setMode(convId, mode) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  Set lead_type (new | renewal)
+//  Auto-assign: find staff with matching job_type (fewest active convs)
+// ─────────────────────────────────────────────────────────────────
+async function autoAssign(convId, lead_type) {
+  // Which job_type do we need?
+  const neededJob = lead_type === 'renewal' ? 'renewal' : 'new_business';
+
+  // Find active staff with matching job_type or 'both', fewest active convs
+  const r = await db.query(`
+    SELECT u.id,
+           COUNT(c.id) AS active_count
+    FROM admin_users u
+    LEFT JOIN inbox_conversations c
+      ON c.assigned_to = u.id AND c.mode IN ('bot','human')
+    WHERE u.is_active = TRUE
+      AND u.role IN ('staff','admin')
+      AND (u.job_type = $1 OR u.job_type = 'both')
+    GROUP BY u.id
+    ORDER BY active_count ASC
+    LIMIT 1
+  `, [neededJob]);
+
+  if (!r.rows[0]) return null;
+
+  const userId = r.rows[0].id;
+  const updated = await db.query(`
+    UPDATE inbox_conversations
+    SET assigned_to = $2, updated_at = NOW()
+    WHERE id = $1 AND (assigned_to IS NULL)
+    RETURNING *
+  `, [convId, userId]);
+
+  return updated.rows[0] || null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Set lead_type (new | renewal) + auto-assign if unassigned
 // ─────────────────────────────────────────────────────────────────
 async function setLeadType(convId, lead_type) {
   const r = await db.query(`
@@ -147,7 +182,15 @@ async function setLeadType(convId, lead_type) {
     WHERE id = $1
     RETURNING *
   `, [convId, lead_type]);
-  return r.rows[0] || null;
+
+  const conv = r.rows[0] || null;
+
+  // Auto-assign if no one assigned yet
+  if (conv && !conv.assigned_to) {
+    await autoAssign(convId, lead_type);
+  }
+
+  return conv;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -197,4 +240,5 @@ module.exports = {
   setAssignedTo,
   markRead,
   getMessagesSince,
+  autoAssign,
 };

@@ -165,6 +165,44 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
 
+/* ── Notes panel ── */
+.notes-panel{width:280px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transform:translateX(100%);transition:transform .25s;position:absolute;right:0;top:0;bottom:0;z-index:50}
+.notes-panel.open{transform:translateX(0)}
+.chat-with-notes{display:flex;flex:1;overflow:hidden;position:relative}
+.chat-column{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.notes-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.notes-header span{font-weight:700;font-size:.9rem;color:var(--text)}
+.btn-notes-close{background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--gray);padding:2px 4px;border-radius:4px}
+.btn-notes-close:hover{background:var(--bg)}
+.notes-list{flex:1;overflow-y:auto;padding:10px}
+.note-item{background:#fefce8;border:1px solid #fef08a;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative}
+.note-item .note-meta{font-size:.7rem;color:#92400e;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.note-item .note-content{font-size:.82rem;color:var(--text);white-space:pre-wrap;word-break:break-word}
+.note-item .note-actions{display:none;gap:6px;margin-top:6px}
+.note-item:hover .note-actions{display:flex}
+.note-btn{padding:3px 8px;border:none;border-radius:5px;cursor:pointer;font-size:.72rem;font-weight:600}
+.note-btn-edit{background:#fde68a;color:#92400e}
+.note-btn-del{background:#fee2e2;color:#dc2626}
+.notes-input-area{padding:10px;border-top:1px solid var(--border);flex-shrink:0}
+.notes-input-area textarea{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:.82rem;resize:none;height:70px;outline:none;font-family:inherit;transition:border .2s}
+.notes-input-area textarea:focus{border-color:#fbbf24}
+.btn-add-note{width:100%;padding:8px;background:#fbbf24;color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;margin-top:6px;transition:background .2s}
+.btn-add-note:hover{background:#f59e0b}
+.notes-empty{padding:20px;text-align:center;color:var(--gray2);font-size:.8rem}
+
+/* ── Notes toggle btn in header ── */
+.btn-notes{padding:7px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;background:var(--bg);color:var(--text2);transition:all .2s;white-space:nowrap}
+.btn-notes:hover{background:#fef9c3;border-color:#fbbf24;color:#92400e}
+.btn-notes.active{background:#fef9c3;border-color:#fbbf24;color:#92400e}
+
+/* ── Saved Filters ── */
+.saved-filters{padding:8px 10px 4px;border-bottom:1px solid var(--border)}
+.saved-filters-label{font-size:.68rem;font-weight:600;color:var(--gray2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.filter-chips{display:flex;gap:5px;flex-wrap:wrap}
+.filter-chip{padding:3px 9px;border-radius:10px;font-size:.7rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#f9fafb;color:var(--gray);transition:all .15s;white-space:nowrap}
+.filter-chip:hover{background:#eff6ff;border-color:var(--blue);color:var(--blue)}
+.filter-chip.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
 /* ── Responsive ── */
 @media(max-width:640px){
   .conv-sidebar{width:100%;position:absolute;z-index:10;height:100%;left:0;top:0;transform:translateX(-100%);transition:transform .3s}
@@ -232,6 +270,18 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
           </select>
         </div>
       </div>
+      <!-- Saved Filters -->
+      <div class="saved-filters">
+        <div class="saved-filters-label">⚡ Saved Filters</div>
+        <div class="filter-chips" id="saved-filter-chips">
+          <span class="filter-chip" data-mode="human" data-channel="" onclick="applyFilter(this)">🧑 Human</span>
+          <span class="filter-chip" data-mode="" data-channel="" data-lead="new" onclick="applyFilter(this)">🆕 ใหม่</span>
+          <span class="filter-chip" data-mode="" data-channel="" data-lead="renewal" onclick="applyFilter(this)">🔄 ต่ออายุ</span>
+          <span class="filter-chip" data-mode="bot" data-channel="" onclick="applyFilter(this)">🤖 Bot ทั้งหมด</span>
+          <span class="filter-chip" data-mode="resolved" data-channel="" onclick="applyFilter(this)">✅ ปิดแล้ว</span>
+        </div>
+      </div>
+
       <div class="conv-list" id="conv-list">
         <div class="empty-list">กำลังโหลด...</div>
       </div>
@@ -261,22 +311,40 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
         <!-- Tags bar -->
         <div class="conv-tags-bar" id="conv-tags-bar"></div>
 
-        <div class="messages-area" id="messages-area"></div>
-
-        <div class="reply-wrapper">
-          <!-- Quick Replies panel -->
-          <div class="qr-panel" id="qr-panel">
-            <div class="qr-top">
-              <span>⚡ Quick Replies</span>
-              <input class="qr-search-inp" id="qr-search-inp" type="text" placeholder="ค้นหา..." oninput="renderQRList()">
+        <!-- Chat + Notes side panel -->
+        <div class="chat-with-notes">
+          <div class="chat-column">
+            <div class="messages-area" id="messages-area"></div>
+            <div class="reply-wrapper">
+              <div class="qr-panel" id="qr-panel">
+                <div class="qr-top">
+                  <span>⚡ Quick Replies</span>
+                  <input class="qr-search-inp" id="qr-search-inp" type="text" placeholder="ค้นหา..." oninput="renderQRList()">
+                </div>
+                <div class="qr-list" id="qr-list"></div>
+              </div>
+              <div class="reply-box">
+                <button class="btn-qr" id="btn-qr" onclick="toggleQR()" title="Quick Replies">⚡</button>
+                <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
+                  oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
+                <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
+              </div>
             </div>
-            <div class="qr-list" id="qr-list"></div>
           </div>
-          <div class="reply-box">
-            <button class="btn-qr" id="btn-qr" onclick="toggleQR()" title="Quick Replies">⚡</button>
-            <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
-              oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
-            <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
+
+          <!-- Notes panel -->
+          <div class="notes-panel" id="notes-panel">
+            <div class="notes-header">
+              <span>📝 โน้ต</span>
+              <button class="btn-notes-close" onclick="toggleNotes()">✕</button>
+            </div>
+            <div class="notes-list" id="notes-list">
+              <div class="notes-empty">ยังไม่มีโน้ต</div>
+            </div>
+            <div class="notes-input-area">
+              <textarea id="note-input" placeholder="จดโน้ต เช่น ติดตามวันศุกร์, สนใจแผน Gold..."></textarea>
+              <button class="btn-add-note" onclick="addNote()">+ บันทึกโน้ต</button>
+            </div>
           </div>
         </div>
       </div>
@@ -400,7 +468,7 @@ async function loadConvs() {
   const channel = document.getElementById('s-channel')?.value || '';
   const search  = document.getElementById('s-search')?.value  || '';
 
-  const lt = getLeadTypeFilter();
+  const lt = window._filterLead || getLeadTypeFilter();
 
   const params = new URLSearchParams();
   if (mode)    params.set('mode',    mode);
@@ -486,11 +554,13 @@ async function openConv(id) {
   const conv = convs.find(c => c.id === id);
   if (conv) updateChatHeader(conv);
 
-  // Load messages + tags in parallel
-  const [msgData] = await Promise.all([
+  // Load messages + tags (+ notes if panel open) in parallel
+  const promises = [
     api('GET', `/inbox/${id}/messages`),
     loadConvTags(id),
-  ]);
+  ];
+  if (notesOpen) promises.push(loadNotes(id));
+  const [msgData] = await Promise.all(promises);
   if (msgData?.success) renderMessages(msgData.messages);
 }
 
@@ -515,22 +585,24 @@ function updateChatHeader(conv) {
 
   document.getElementById('chat-meta').innerHTML = ch + lt + modeB;
 
+  // Notes button (persistent)
+  const notesOpen = document.getElementById('notes-panel')?.classList.contains('open');
+
   // Action buttons based on mode
   const acts = document.getElementById('chat-actions');
+  let modeButtons = '';
   if (conv.mode === 'bot') {
-    acts.innerHTML = `
-      <button class="btn btn-green" onclick="setMode('human')">🙋 Takeover</button>
-    `;
+    modeButtons = `<button class="btn btn-green" onclick="setMode('human')">🙋 Takeover</button>`;
   } else if (conv.mode === 'human') {
-    acts.innerHTML = `
+    modeButtons = `
       <button class="btn btn-red" onclick="setMode('resolved')">✅ ปิดงาน</button>
-      <button class="btn btn-gray" onclick="setMode('bot')">🤖 คืน Bot</button>
-    `;
+      <button class="btn btn-gray" onclick="setMode('bot')">🤖 คืน Bot</button>`;
   } else {
-    acts.innerHTML = `
-      <button class="btn btn-gray" onclick="setMode('bot')">🔄 เปิดใหม่</button>
-    `;
+    modeButtons = `<button class="btn btn-gray" onclick="setMode('bot')">🔄 เปิดใหม่</button>`;
   }
+  acts.innerHTML = modeButtons + `
+    <button class="btn-notes${notesOpen ? ' active' : ''}" id="btn-notes" onclick="toggleNotes()">📝 โน้ต</button>
+  `;
 }
 
 // ════════════════════════════════════════════
@@ -814,6 +886,120 @@ function useQR(content) {
   autoGrow(input);
   input.focus();
   toggleQR(); // close panel
+}
+
+// ════════════════════════════════════════════
+//  Notes
+// ════════════════════════════════════════════
+let notesOpen = false;
+let notesList = [];
+let editingNoteId = null;
+
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notes-panel').classList.toggle('open', notesOpen);
+  const btn = document.getElementById('btn-notes');
+  if (btn) btn.classList.toggle('active', notesOpen);
+  if (notesOpen && activeId) loadNotes(activeId);
+}
+
+async function loadNotes(convId) {
+  const r = await api('GET', `/notes/${convId}`);
+  notesList = r?.success ? r.notes : [];
+  renderNotes();
+}
+
+function renderNotes() {
+  const el = document.getElementById('notes-list');
+  if (!el) return;
+  if (!notesList.length) {
+    el.innerHTML = '<div class="notes-empty">ยังไม่มีโน้ต<br><small>เพิ่มโน้ตด้านล่าง</small></div>';
+    return;
+  }
+  el.innerHTML = notesList.map(n => `
+    <div class="note-item" id="note-${n.id}">
+      <div class="note-meta">
+        <span>✏️ ${escHtml(n.author_name || 'ไม่ทราบ')}</span>
+        <span>${fmtTime(n.created_at)}</span>
+      </div>
+      <div class="note-content" id="note-content-${n.id}">${escHtml(n.content)}</div>
+      <div class="note-actions">
+        <button class="note-btn note-btn-edit" onclick="startEditNote(${n.id})">แก้ไข</button>
+        <button class="note-btn note-btn-del" onclick="deleteNote(${n.id})">ลบ</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addNote() {
+  if (!activeId) return;
+  const input = document.getElementById('note-input');
+  const content = input.value.trim();
+  if (!content) return;
+
+  if (editingNoteId) {
+    const r = await api('PUT', `/notes/${activeId}/${editingNoteId}`, { content });
+    if (r?.success) {
+      editingNoteId = null;
+      input.value = '';
+      document.querySelector('.btn-add-note').textContent = '+ บันทึกโน้ต';
+      await loadNotes(activeId);
+      toast('แก้ไขโน้ตแล้ว', 'success');
+    }
+  } else {
+    const r = await api('POST', `/notes/${activeId}`, { content });
+    if (r?.success) {
+      input.value = '';
+      await loadNotes(activeId);
+      toast('บันทึกโน้ตแล้ว', 'success');
+    }
+  }
+}
+
+function startEditNote(noteId) {
+  const note = notesList.find(n => n.id === noteId);
+  if (!note) return;
+  editingNoteId = noteId;
+  const input = document.getElementById('note-input');
+  input.value = note.content;
+  input.focus();
+  document.querySelector('.btn-add-note').textContent = '💾 บันทึกการแก้ไข';
+}
+
+async function deleteNote(noteId) {
+  if (!activeId) return;
+  if (!confirm('ลบโน้ตนี้?')) return;
+  await api('DELETE', `/notes/${activeId}/${noteId}`);
+  await loadNotes(activeId);
+  toast('ลบโน้ตแล้ว', 'info');
+}
+
+// ════════════════════════════════════════════
+//  Saved Filters
+// ════════════════════════════════════════════
+function applyFilter(chip) {
+  // Toggle active
+  const wasActive = chip.classList.contains('active');
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+
+  if (wasActive) {
+    // deactivate — reset filters
+    document.getElementById('s-mode').value    = '';
+    document.getElementById('s-channel').value = '';
+    loadConvs();
+    return;
+  }
+
+  chip.classList.add('active');
+  const mode    = chip.dataset.mode    || '';
+  const channel = chip.dataset.channel || '';
+  const lead    = chip.dataset.lead    || '';
+
+  document.getElementById('s-mode').value    = mode;
+  document.getElementById('s-channel').value = channel;
+  // lead_type filter via URL param in loadConvs
+  window._filterLead = lead;
+  loadConvs();
 }
 
 // ════════════════════════════════════════════

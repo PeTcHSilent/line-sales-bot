@@ -235,6 +235,12 @@
     <div class="nav-item" onclick="showPage('staff')" id="nav-staff">
       <span class="icon">🧑‍💼</span> ข้อมูลพนักงาน
     </div>
+    <div class="nav-item" onclick="showPage('analytics')" id="nav-analytics">
+      <span class="icon">📊</span> Analytics
+    </div>
+    <div class="nav-item" onclick="showPage('broadcast')" id="nav-broadcast">
+      <span class="icon">📣</span> Broadcast
+    </div>
     <div class="nav-section">ระบบ</div>
     <div class="nav-item" onclick="showPage('usage')" id="nav-usage">
       <span class="icon">📈</span> AI Usage & Cost
@@ -284,6 +290,90 @@
               <thead><tr><th>ชื่อ / LINE</th><th>เบอร์</th><th>รถ</th><th>ประกัน</th><th>สถานะ</th><th>วันที่</th><th></th></tr></thead>
               <tbody id="hot-leads-body"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Analytics ── -->
+      <div id="page-analytics" style="display:none">
+        <div class="stats-grid" id="inbox-stats-grid">
+          <div class="stat-card blue"><div class="val" id="as-today">—</div><div class="lbl">แชทวันนี้</div></div>
+          <div class="stat-card"><div class="val" id="as-week">—</div><div class="lbl">แชทสัปดาห์นี้</div></div>
+          <div class="stat-card yellow"><div class="val" id="as-open">—</div><div class="lbl">กำลังดำเนินการ</div></div>
+          <div class="stat-card green"><div class="val" id="as-resolved">—</div><div class="lbl">ปิดสัปดาห์นี้</div></div>
+          <div class="stat-card red"><div class="val" id="as-human">—</div><div class="lbl">Human Mode</div></div>
+          <div class="stat-card"><div class="val" id="as-resp">—</div><div class="lbl">เฉลี่ยตอบ (นาที)</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><h3>👤 สถิติรายพนักงาน (30 วัน)</h3><button class="btn btn-ghost btn-sm" onclick="loadAnalytics()">🔄 รีเฟรช</button></div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>พนักงาน</th><th>กลุ่ม</th><th>รับงานทั้งหมด</th><th>กำลังดำเนินการ</th><th>ปิดแล้ว</th><th>เฉลี่ยตอบ (นาที)</th></tr></thead>
+              <tbody id="staff-stats-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>📈 แนวโน้ม 14 วันล่าสุด</h3></div>
+          <div class="card-body" style="padding:16px">
+            <div id="trend-chart" style="overflow-x:auto">
+              <table style="width:100%;min-width:500px">
+                <thead><tr><th>วันที่</th><th>แชทใหม่</th><th>งานใหม่</th><th>ต่ออายุ</th><th>ปิดแล้ว</th></tr></thead>
+                <tbody id="trend-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Broadcast ── -->
+      <div id="page-broadcast" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+          <!-- Send form -->
+          <div class="card">
+            <div class="card-header"><h3>📣 ส่งข้อความกลุ่ม (LINE)</h3></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div>
+                <label style="font-size:.82rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">ชื่อ Broadcast</label>
+                <input type="text" id="bc-title" class="search-input" style="width:100%" placeholder="เช่น ข่าวสารประจำเดือน">
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">กลุ่มเป้าหมาย</label>
+                <div style="display:flex;gap:8px">
+                  <select id="bc-filter-type" class="filter-sel" onchange="previewBroadcast()" style="flex:1">
+                    <option value="all">ลูกค้าทั้งหมด (LINE)</option>
+                    <option value="lead_type" data-needs-val>ตาม Lead Type</option>
+                    <option value="tag" data-needs-val>ตาม Tag</option>
+                  </select>
+                  <select id="bc-filter-val-type" class="filter-sel" style="display:none" onchange="previewBroadcast()">
+                    <option value="new">🆕 ลูกค้าใหม่</option>
+                    <option value="renewal">🔄 ต่ออายุ</option>
+                  </select>
+                  <select id="bc-filter-val-tag" class="filter-sel" style="display:none" onchange="previewBroadcast()">
+                    <option value="">-- เลือก tag --</option>
+                  </select>
+                </div>
+                <div id="bc-preview-count" style="margin-top:8px;font-size:.8rem;color:var(--gray)">— ผู้รับ</div>
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">ข้อความ</label>
+                <textarea id="bc-message" rows="5" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.87rem;resize:vertical;font-family:inherit;outline:none" placeholder="พิมพ์ข้อความที่ต้องการส่ง..."></textarea>
+              </div>
+              <button class="btn btn-blue" onclick="sendBroadcast()" id="btn-send-broadcast">📣 ส่ง Broadcast</button>
+            </div>
+          </div>
+
+          <!-- History -->
+          <div class="card">
+            <div class="card-header"><h3>📋 ประวัติ Broadcast</h3><button class="btn btn-ghost btn-sm" onclick="loadBroadcastHistory()">🔄 รีเฟรช</button></div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>ชื่อ</th><th>กลุ่ม</th><th>ส่งแล้ว</th><th>ล้มเหลว</th><th>สถานะ</th><th>เวลา</th></tr></thead>
+                <tbody id="broadcast-history-body"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:24px">กำลังโหลด...</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -931,13 +1021,15 @@ const PAGE_TITLES = {
   inbox:     '💬 Unified Inbox',
   groups:    '🗂️ กลุ่มพนักงาน',
   staff:     '🧑‍💼 ข้อมูลพนักงาน',
+  analytics: '📊 Analytics',
+  broadcast: '📣 Broadcast',
   usage:     '📈 AI Usage & Cost',
   settings:  '⚙️ ตั้งค่าระบบ',
 };
 
 function showPage(name) {
   currentPageName = name;
-  ['dashboard','leads','inbox','groups','staff','usage','settings'].forEach(p => {
+  ['dashboard','leads','inbox','groups','staff','analytics','broadcast','usage','settings'].forEach(p => {
     const el = document.getElementById('page-'+p);
     if (el) el.style.display = p===name ? 'block' : 'none';
     const nav = document.getElementById('nav-'+p);
@@ -950,6 +1042,8 @@ function showPage(name) {
   if (name === 'inbox')     initInbox();
   if (name === 'groups')    loadStaffGroups();
   if (name === 'staff')     loadStaff();
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'broadcast') loadBroadcastPage();
   if (name === 'usage')     loadUsagePage();
   if (name === 'settings')  loadSettings();
 }
@@ -1392,6 +1486,150 @@ async function runHrSync() {
     </div>`;
   }
   resultEl.style.display = 'block';
+}
+
+// ════════════════════════════════════════════
+//  Analytics
+// ════════════════════════════════════════════
+async function loadAnalytics() {
+  const [sum, staff, trend] = await Promise.all([
+    api('GET', '/dashboard/summary'),
+    api('GET', '/dashboard/staff-stats'),
+    api('GET', '/dashboard/trend'),
+  ]);
+
+  if (sum?.success) {
+    document.getElementById('as-today').textContent    = sum.today ?? '—';
+    document.getElementById('as-week').textContent     = sum.this_week ?? '—';
+    document.getElementById('as-open').textContent     = sum.open ?? '—';
+    document.getElementById('as-resolved').textContent = sum.resolved_week ?? '—';
+    document.getElementById('as-human').textContent    = sum.human_mode ?? '—';
+    document.getElementById('as-resp').textContent     = sum.avg_first_reply_min ?? '—';
+  }
+
+  if (staff?.success) {
+    const tbody = document.getElementById('staff-stats-body');
+    const JT = { new_business: '🆕 งานใหม่', renewal: '🔄 ต่ออายุ', both: '🔀 ทั้งหมด' };
+    tbody.innerHTML = staff.staff.length
+      ? staff.staff.map(s => `<tr>
+          <td><strong>${escHtml(s.display_name)}</strong></td>
+          <td>${JT[s.job_type] || s.job_type || '—'}</td>
+          <td>${s.total_assigned || 0}</td>
+          <td>${s.active || 0}</td>
+          <td>${s.resolved || 0}</td>
+          <td>${s.avg_first_reply_min ?? '—'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:24px">ยังไม่มีข้อมูล</td></tr>';
+  }
+
+  if (trend?.success) {
+    const tbody = document.getElementById('trend-body');
+    tbody.innerHTML = trend.trend.length
+      ? trend.trend.map(t => {
+          const d = new Date(t.day).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' });
+          return `<tr>
+            <td>${d}</td>
+            <td>${t.total}</td>
+            <td>${t.new_leads}</td>
+            <td>${t.renewals}</td>
+            <td>${t.resolved}</td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:24px">ยังไม่มีข้อมูล</td></tr>';
+  }
+}
+
+// ════════════════════════════════════════════
+//  Broadcast
+// ════════════════════════════════════════════
+let bcTags = [];
+
+async function loadBroadcastPage() {
+  await loadBroadcastHistory();
+  // load tags for filter dropdown
+  const r = await api('GET', '/tags');
+  bcTags = r?.success ? r.tags : [];
+  const sel = document.getElementById('bc-filter-val-tag');
+  if (sel) {
+    sel.innerHTML = '<option value="">-- เลือก tag --</option>' +
+      bcTags.map(t => `<option value="${escHtml(t.name)}">${escHtml(t.name)}</option>`).join('');
+  }
+  await previewBroadcast();
+}
+
+async function loadBroadcastHistory() {
+  const r = await api('GET', '/broadcast');
+  const tbody = document.getElementById('broadcast-history-body');
+  if (!tbody) return;
+  if (!r?.success || !r.broadcasts.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:24px">ยังไม่มีประวัติ</td></tr>';
+    return;
+  }
+  const STATUS = { pending: '⏳', sending: '🔄', done: '✅', failed: '❌' };
+  tbody.innerHTML = r.broadcasts.map(b => `<tr>
+    <td>${escHtml(b.title)}</td>
+    <td><small>${escHtml(b.filter_type)}${b.filter_value ? ': '+escHtml(b.filter_value) : ''}</small></td>
+    <td style="color:var(--green)">${b.sent_count}</td>
+    <td style="color:${b.fail_count > 0 ? 'var(--red)' : 'inherit'}">${b.fail_count}</td>
+    <td>${STATUS[b.status] || b.status}</td>
+    <td><small>${b.sent_at ? new Date(b.sent_at).toLocaleDateString('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'}</small></td>
+  </tr>`).join('');
+}
+
+async function previewBroadcast() {
+  const filterType = document.getElementById('bc-filter-type')?.value || 'all';
+  const typeSelLT  = document.getElementById('bc-filter-val-type');
+  const typeSelTag = document.getElementById('bc-filter-val-tag');
+
+  if (filterType === 'lead_type') {
+    typeSelLT.style.display  = '';
+    typeSelTag.style.display = 'none';
+  } else if (filterType === 'tag') {
+    typeSelLT.style.display  = 'none';
+    typeSelTag.style.display = '';
+  } else {
+    typeSelLT.style.display  = 'none';
+    typeSelTag.style.display = 'none';
+  }
+
+  const filterVal = filterType === 'lead_type' ? typeSelLT?.value
+                  : filterType === 'tag'       ? typeSelTag?.value
+                  : '';
+  const params = new URLSearchParams({ filter_type: filterType });
+  if (filterVal) params.set('filter_value', filterVal);
+
+  const r = await api('GET', '/broadcast/preview?' + params.toString());
+  const el = document.getElementById('bc-preview-count');
+  if (el) el.textContent = r?.success ? `👥 ผู้รับประมาณ ${r.count} คน` : '—';
+}
+
+async function sendBroadcast() {
+  const title      = document.getElementById('bc-title')?.value.trim();
+  const message    = document.getElementById('bc-message')?.value.trim();
+  const filterType = document.getElementById('bc-filter-type')?.value || 'all';
+  const filterVal  = filterType === 'lead_type'
+    ? document.getElementById('bc-filter-val-type')?.value
+    : filterType === 'tag'
+    ? document.getElementById('bc-filter-val-tag')?.value
+    : '';
+
+  if (!title || !message) { showToast('กรุณาระบุชื่อและข้อความ', 'error'); return; }
+  if (!confirm(`ส่ง Broadcast ไปยังกลุ่มเป้าหมาย?\n\n"${message.slice(0,80)}${message.length>80?'...':''}"`)) return;
+
+  const btn = document.getElementById('btn-send-broadcast');
+  btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
+
+  const r = await api('POST', '/broadcast', { title, message, filter_type: filterType, filter_value: filterVal || undefined });
+  btn.disabled = false; btn.textContent = '📣 ส่ง Broadcast';
+
+  if (r?.success) {
+    showToast(`ส่งสำเร็จ ${r.sent} คน (ล้มเหลว ${r.failed} คน)`, 'success');
+    document.getElementById('bc-title').value   = '';
+    document.getElementById('bc-message').value = '';
+    await loadBroadcastHistory();
+  } else {
+    showToast('ส่งไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
+  }
 }
 
 async function loadSettings() {
