@@ -752,7 +752,7 @@ function buildMsgEl(m) {
   let bubbleBody;
   if (m.msg_type === 'image' && m.content) {
     // LINE image API requires Authorization header — use server-side proxy
-    const tok = localStorage.getItem('token') || '';
+    const tok = localStorage.getItem('sb_staff_token') || '';
     const proxyUrl = `/api/inbox/image-proxy?url=${encodeURIComponent(m.content)}&t=${encodeURIComponent(tok)}`;
     bubbleBody = `<img src="${proxyUrl}" alt="รูปภาพ" onclick="window.open('${proxyUrl}','_blank')" loading="lazy">`;
   } else {
