@@ -294,6 +294,20 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .btn-dl-file{margin-top:6px;padding:3px 10px;background:var(--blue);color:#fff;border:none;border-radius:5px;font-size:.72rem;cursor:pointer;white-space:nowrap}
 .btn-dl-file:hover{background:var(--blue2)}
 
+/* ── In-chat message search ── */
+.msg-search-bar{display:none;background:#f0f7ff;border-bottom:1px solid #bfdbfe;padding:8px 14px;align-items:center;gap:8px;flex-shrink:0}
+.msg-search-bar.open{display:flex}
+.msg-search-inp{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:7px 11px;font-size:.85rem;outline:none;font-family:inherit;transition:border .2s;min-width:0}
+.msg-search-inp:focus{border-color:var(--blue)}
+.msg-search-count{font-size:.75rem;color:var(--gray);white-space:nowrap;min-width:64px;text-align:right}
+.btn-msg-search-nav{padding:5px 9px;background:var(--surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.75rem;line-height:1;transition:background .15s;flex-shrink:0}
+.btn-msg-search-nav:hover{background:var(--bg)}
+.btn-msg-search-nav:disabled{opacity:.35;cursor:not-allowed}
+.btn-msg-search-close{padding:4px 8px;background:none;border:none;cursor:pointer;font-size:1rem;color:var(--gray);border-radius:5px;flex-shrink:0}
+.btn-msg-search-close:hover{background:var(--border)}
+mark.msg-hl{background:#fef08a;color:var(--text);border-radius:2px;padding:0 1px}
+mark.msg-hl.current{background:#f97316;color:#fff}
+
 /* ── Responsive ── */
 @media(max-width:640px){
   .conv-sidebar{width:100%;position:absolute;z-index:10;height:100%;left:0;top:0;transform:translateX(-100%);transition:transform .3s}
@@ -401,6 +415,18 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 
         <!-- Tags bar -->
         <div class="conv-tags-bar" id="conv-tags-bar"></div>
+
+        <!-- In-chat search bar (hidden until toggled) -->
+        <div class="msg-search-bar" id="msg-search-bar">
+          <span style="font-size:.85rem;color:var(--blue);flex-shrink:0">🔍</span>
+          <input class="msg-search-inp" id="msg-search-inp" type="text"
+            placeholder="ค้นหาในบทสนทนา..."
+            oninput="onMsgSearch()" onkeydown="msgSearchKey(event)">
+          <span class="msg-search-count" id="msg-search-count"></span>
+          <button class="btn-msg-search-nav" id="btn-search-prev" onclick="navigateMsgSearch(-1)" title="ก่อนหน้า (Shift+Enter)">▲</button>
+          <button class="btn-msg-search-nav" id="btn-search-next" onclick="navigateMsgSearch(1)" title="ถัดไป (Enter)">▼</button>
+          <button class="btn-msg-search-close" onclick="closeMsgSearch()" title="ปิด (Esc)">✕</button>
+        </div>
 
         <!-- Chat + Notes side panel -->
         <div class="chat-with-notes">
@@ -700,6 +726,7 @@ async function openConv(id) {
   activeId = id;
   lastMsgTs = null;
   renderedIds.clear();
+  closeMsgSearch(); // reset search when switching conversations
 
   // Highlight in list
   document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
@@ -765,11 +792,13 @@ function updateChatHeader(conv) {
   } else {
     modeButtons = `<button class="btn btn-gray" onclick="setMode('bot')">🔄 เปิดใหม่</button>`;
   }
+  const searchOpen = document.getElementById('msg-search-bar')?.classList.contains('open');
   acts.innerHTML = modeButtons + `
     <button class="btn-followup" id="btn-followup" onclick="openFollowUpModal()">📅 ติดตาม</button>
     <button class="btn-transfer" onclick="openTransferModal()">🔀 โอน</button>
     <button class="btn-open-profile" id="btn-profile" onclick="toggleProfile()">👤 โปรไฟล์</button>
     <button class="btn-notes${notesOpen ? ' active' : ''}" id="btn-notes" onclick="toggleNotes()">📝 โน้ต</button>
+    <button class="btn-notes${searchOpen ? ' active' : ''}" id="btn-msg-search" onclick="toggleMsgSearch()" title="ค้นหาข้อความ (Ctrl+F)">🔍</button>
   `;
 }
 
@@ -1015,6 +1044,130 @@ async function sendFileReply() {
     toast('ส่งไฟล์ไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
   }
 }
+
+// ════════════════════════════════════════════
+//  In-chat message search
+// ════════════════════════════════════════════
+let _searchMatches = [];
+let _searchIdx     = -1;
+
+function toggleMsgSearch() {
+  const bar = document.getElementById('msg-search-bar');
+  if (bar.classList.contains('open')) {
+    closeMsgSearch();
+  } else {
+    bar.classList.add('open');
+    setTimeout(() => document.getElementById('msg-search-inp').focus(), 50);
+    // Update search button state in header
+    const btn = document.getElementById('btn-msg-search');
+    if (btn) btn.classList.add('active');
+  }
+}
+
+function closeMsgSearch() {
+  clearMsgHighlights();
+  const bar = document.getElementById('msg-search-bar');
+  if (bar) bar.classList.remove('open');
+  const inp = document.getElementById('msg-search-inp');
+  if (inp) inp.value = '';
+  const count = document.getElementById('msg-search-count');
+  if (count) count.textContent = '';
+  const btn = document.getElementById('btn-msg-search');
+  if (btn) btn.classList.remove('active');
+  _searchMatches = [];
+  _searchIdx = -1;
+}
+
+function clearMsgHighlights() {
+  document.querySelectorAll('.messages-area .inbox-bubble').forEach(bubble => {
+    // Only restore text bubbles — skip image/file which have rich HTML
+    if (!bubble.querySelector('.img-wrap') && !bubble.querySelector('.file-bubble')) {
+      bubble.innerHTML = bubble.innerHTML
+        .replace(/<mark class="msg-hl[^"]*">([\s\S]*?)<\/mark>/g, '$1');
+    }
+  });
+}
+
+function onMsgSearch() {
+  clearMsgHighlights();
+  _searchMatches = [];
+  _searchIdx = -1;
+
+  const term    = document.getElementById('msg-search-inp').value;
+  const countEl = document.getElementById('msg-search-count');
+
+  if (!term.trim()) {
+    countEl.textContent = '';
+    _updateSearchNavBtns();
+    return;
+  }
+
+  const termLower = term.toLowerCase();
+  const bubbles   = document.querySelectorAll('.messages-area .inbox-bubble');
+
+  bubbles.forEach(bubble => {
+    // Skip non-text bubbles
+    if (bubble.querySelector('.img-wrap') || bubble.querySelector('.file-bubble')) return;
+
+    const text = bubble.textContent || '';
+    if (!text.toLowerCase().includes(termLower)) return;
+
+    // Highlight: re-escape the text, then wrap matches
+    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${escapedTerm})`, 'gi');
+    bubble.innerHTML = escHtml(text).replace(re, '<mark class="msg-hl">$1</mark>');
+
+    bubble.querySelectorAll('mark.msg-hl').forEach(m => _searchMatches.push(m));
+  });
+
+  if (_searchMatches.length > 0) {
+    _searchIdx = 0;
+    _highlightCurrent();
+  } else {
+    countEl.textContent = '0 ผลลัพธ์';
+  }
+  _updateSearchNavBtns();
+}
+
+function _highlightCurrent() {
+  _searchMatches.forEach((m, i) => m.classList.toggle('current', i === _searchIdx));
+  const cur = _searchMatches[_searchIdx];
+  if (cur) {
+    cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    document.getElementById('msg-search-count').textContent =
+      `${_searchIdx + 1} / ${_searchMatches.length}`;
+  }
+}
+
+function navigateMsgSearch(dir) {
+  if (!_searchMatches.length) return;
+  _searchIdx = (_searchIdx + dir + _searchMatches.length) % _searchMatches.length;
+  _highlightCurrent();
+}
+
+function _updateSearchNavBtns() {
+  const has  = _searchMatches.length > 0;
+  const prev = document.getElementById('btn-search-prev');
+  const next = document.getElementById('btn-search-next');
+  if (prev) prev.disabled = !has;
+  if (next) next.disabled = !has;
+}
+
+function msgSearchKey(e) {
+  if (e.key === 'Escape') { closeMsgSearch(); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    navigateMsgSearch(e.shiftKey ? -1 : 1);
+  }
+}
+
+// Ctrl+F / Cmd+F → open in-chat search when a conversation is open
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f' && activeId) {
+    e.preventDefault();
+    toggleMsgSearch();
+  }
+});
 
 // ════════════════════════════════════════════
 //  Send reply
