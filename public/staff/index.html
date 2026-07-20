@@ -111,6 +111,9 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .btn-img{padding:9px 11px;background:none;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:1rem;transition:border .2s;flex-shrink:0}
 .btn-img:hover{border-color:var(--blue)}
 .btn-img:disabled{opacity:.4;cursor:not-allowed}
+.btn-file{padding:9px 11px;background:none;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:1rem;transition:border .2s;flex-shrink:0}
+.btn-file:hover{border-color:var(--yellow)}
+.btn-file:disabled{opacity:.4;cursor:not-allowed}
 
 /* ── Image preview strip ── */
 .img-preview-strip{display:none;background:var(--surface);border-top:1px solid var(--border);padding:10px 16px;align-items:center;gap:12px;flex-shrink:0}
@@ -122,6 +125,19 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 .btn-cancel-img{padding:5px 12px;background:none;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-size:.8rem;color:var(--gray);transition:border .2s}
 .btn-cancel-img:hover{border-color:var(--red);color:var(--red)}
 .img-preview-info{font-size:.75rem;color:var(--gray);margin-top:2px}
+
+/* ── File preview strip ── */
+.file-preview-strip{display:none;background:#fffbeb;border-top:1px solid #fde68a;padding:10px 16px;align-items:center;gap:12px;flex-shrink:0}
+.file-preview-icon{font-size:2.2rem;flex-shrink:0}
+.file-preview-details{flex:1;min-width:0}
+.file-preview-name{font-size:.85rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-preview-meta{font-size:.75rem;color:#92400e;margin-top:2px}
+.file-preview-strip .preview-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.btn-send-file{padding:6px 14px;background:var(--yellow);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:background .2s}
+.btn-send-file:hover{background:#b45309}
+.btn-send-file:disabled{background:var(--gray2);cursor:not-allowed}
+.btn-cancel-file{padding:5px 12px;background:none;border:1.5px solid #fde68a;border-radius:7px;cursor:pointer;font-size:.8rem;color:#92400e;transition:border .2s}
+.btn-cancel-file:hover{border-color:var(--red);color:var(--red)}
 
 /* ── Badges ── */
 .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:600}
@@ -407,10 +423,24 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
                   <div class="img-preview-info" id="img-preview-info"></div>
                 </div>
               </div>
+              <!-- File preview strip (hidden until document selected) -->
+              <div class="file-preview-strip" id="file-preview-strip">
+                <div class="file-preview-icon" id="file-preview-icon">📄</div>
+                <div class="file-preview-details">
+                  <div class="file-preview-name" id="file-preview-name"></div>
+                  <div class="file-preview-meta" id="file-preview-meta"></div>
+                </div>
+                <div class="preview-actions">
+                  <button class="btn-send-file" id="btn-send-file" onclick="sendFileReply()">📤 ส่งไฟล์</button>
+                  <button class="btn-cancel-file" onclick="cancelFileReply()">✕ ยกเลิก</button>
+                </div>
+              </div>
               <div class="reply-box">
                 <button class="btn-qr" id="btn-qr" onclick="toggleQR()" title="Quick Replies">⚡</button>
                 <button class="btn-img" id="btn-img" onclick="triggerImagePicker()" title="ส่งรูปภาพ">📎</button>
+                <button class="btn-file" id="btn-file" onclick="triggerFilePicker()" title="ส่งไฟล์ PDF/เอกสาร">📄</button>
                 <input type="file" id="img-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="onImageFileSelected(event)">
+                <input type="file" id="doc-file-input" accept=".pdf,.docx,.doc,.xlsx,.xls" style="display:none" onchange="onDocFileSelected(event)">
                 <textarea id="reply-input" placeholder="พิมพ์ข้อความ..." rows="1"
                   oninput="autoGrow(this)" onkeydown="replyKey(event)"></textarea>
                 <button class="btn-send" id="btn-send" onclick="sendReply()">ส่ง →</button>
@@ -790,21 +820,29 @@ function buildMsgEl(m) {
   const tok = localStorage.getItem('sb_staff_token') || '';
 
   if (m.msg_type === 'image' && m.content) {
-    // LINE image — proxy to inject Authorization header
-    const proxyUrl = `/api/inbox/image-proxy?url=${encodeURIComponent(m.content)}&t=${encodeURIComponent(tok)}`;
-    const dlUrl    = proxyUrl + '&dl=1&fn=image.jpg';
+    // LINE image: api-data.line.me → needs proxy; our /uploads/ → direct
+    const isLineImg = m.content.startsWith('https://api-data.line.me/');
+    const viewUrl = isLineImg
+      ? `/api/inbox/image-proxy?url=${encodeURIComponent(m.content)}&t=${encodeURIComponent(tok)}`
+      : m.content;
+    const dlUrl = isLineImg ? viewUrl + '&dl=1&fn=image.jpg' : m.content;
     bubbleBody = `<div class="img-wrap">
-      <img src="${proxyUrl}" alt="รูปภาพ" onclick="window.open('${proxyUrl}','_blank')" loading="lazy">
+      <img src="${viewUrl}" alt="รูปภาพ" onclick="window.open('${viewUrl}','_blank')" loading="lazy">
       <a class="btn-dl-img" href="${dlUrl}" download="image.jpg">⬇️ ดาวน์โหลดรูปภาพ</a>
     </div>`;
 
   } else if (m.msg_type === 'file' && m.content) {
-    // LINE file (PDF, DOCX, video, audio etc.) — stored as JSON
+    // File: stored as JSON { url, filename, size }
+    // api-data.line.me → needs proxy; our /uploads/ → direct link
     let fileData = { url: '', filename: 'ไฟล์แนบ', size: 0 };
     try { fileData = JSON.parse(m.content); } catch (_) { fileData.url = m.content; }
-    const proxyUrl = `/api/inbox/image-proxy?url=${encodeURIComponent(fileData.url)}&t=${encodeURIComponent(tok)}`;
-    const dlUrl    = proxyUrl + `&dl=1&fn=${encodeURIComponent(fileData.filename || 'file')}`;
-    const sizeStr  = fileData.size ? ` · ${(fileData.size / 1024).toFixed(1)} KB` : '';
+    const isLineFile = fileData.url.startsWith('https://api-data.line.me/');
+    const dlUrl = isLineFile
+      ? `/api/inbox/image-proxy?url=${encodeURIComponent(fileData.url)}&t=${encodeURIComponent(tok)}&dl=1&fn=${encodeURIComponent(fileData.filename || 'file')}`
+      : fileData.url; // staff-sent file: direct public URL, browser handles download
+    const sizeStr  = fileData.size
+      ? ` · ${fileData.size > 1_048_576 ? (fileData.size/1_048_576).toFixed(1)+' MB' : (fileData.size/1024).toFixed(0)+' KB'}`
+      : '';
     const ext = (fileData.filename || '').split('.').pop().toLowerCase();
     const icon = ['pdf'].includes(ext) ? '📄' : ['doc','docx'].includes(ext) ? '📝' : ['xls','xlsx'].includes(ext) ? '📊' : ['mp4','mov','avi'].includes(ext) ? '🎬' : ['mp3','m4a','ogg'].includes(ext) ? '🎵' : '📎';
     bubbleBody = `<div class="file-bubble">
@@ -903,6 +941,78 @@ async function sendImageReply() {
     cancelImageReply();
   } else {
     toast('ส่งรูปไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
+  }
+}
+
+// ════════════════════════════════════════════
+//  File reply (staff → customer via Flex Message)
+// ════════════════════════════════════════════
+let _pendingFileBase64 = null;
+let _pendingFileMime   = null;
+let _pendingFileName   = null;
+
+function triggerFilePicker() {
+  if (!activeId) return toast('เลือกบทสนทนาก่อน', 'error');
+  document.getElementById('doc-file-input').click();
+}
+
+function onDocFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) {
+    toast('ไฟล์ใหญ่เกิน 20MB', 'error');
+    event.target.value = '';
+    return;
+  }
+  _pendingFileMime = file.type;
+  _pendingFileName = file.name;
+
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const icon = ext === 'pdf' ? '📄' : (ext === 'xlsx' || ext === 'xls') ? '📊' : '📝';
+  const sizeStr = file.size > 1_048_576
+    ? (file.size / 1_048_576).toFixed(1) + ' MB'
+    : (file.size / 1024).toFixed(0) + ' KB';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    _pendingFileBase64 = e.target.result.split(',')[1];
+    document.getElementById('file-preview-icon').textContent = icon;
+    document.getElementById('file-preview-name').textContent = file.name;
+    document.getElementById('file-preview-meta').textContent = sizeStr + ' · จะส่งเป็น Flex Message ใน LINE พร้อมปุ่มดาวน์โหลด';
+    document.getElementById('file-preview-strip').style.display = 'flex';
+  };
+  reader.readAsDataURL(file);
+}
+
+function cancelFileReply() {
+  _pendingFileBase64 = null;
+  _pendingFileMime   = null;
+  _pendingFileName   = null;
+  document.getElementById('file-preview-strip').style.display = 'none';
+  document.getElementById('doc-file-input').value = '';
+}
+
+async function sendFileReply() {
+  if (!activeId || !_pendingFileBase64) return;
+  const btn = document.getElementById('btn-send-file');
+  btn.disabled = true;
+  btn.textContent = 'กำลังส่ง...';
+
+  const r = await api('POST', `/inbox/${activeId}/reply-file`, {
+    file_base64: _pendingFileBase64,
+    filename:    _pendingFileName,
+    mime_type:   _pendingFileMime,
+  });
+
+  btn.disabled = false;
+  btn.textContent = '📤 ส่งไฟล์';
+
+  if (r?.success) {
+    toast('ส่งไฟล์สำเร็จ ✅', 'success');
+    cancelFileReply();
+    if (r.message) appendMessages([r.message]);
+  } else {
+    toast('ส่งไฟล์ไม่สำเร็จ: ' + (r?.error || 'ข้อผิดพลาด'), 'error');
   }
 }
 

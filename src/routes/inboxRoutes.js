@@ -297,6 +297,143 @@ router.post('/:id/reply-image', requireAuth, async (req, res) => {
   }
 });
 
+// ── POST /api/inbox/:id/reply-file — staff ส่งเอกสาร (PDF/DOCX/XLSX) ──
+// Body: { file_base64, filename, mime_type }
+// LINE ไม่รองรับส่ง file โดยตรง → upload → ส่ง Flex Message พร้อมปุ่มดาวน์โหลด
+router.post('/:id/reply-file', requireAuth, async (req, res) => {
+  try {
+    const { file_base64, filename, mime_type } = req.body;
+    if (!file_base64) return res.status(400).json({ success: false, error: 'file_base64 required' });
+    if (!filename)   return res.status(400).json({ success: false, error: 'filename required' });
+
+    // Allowed MIME types for documents
+    const ALLOWED = {
+      'application/pdf': 'pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'application/vnd.ms-excel': 'xls',
+    };
+    const ext = ALLOWED[mime_type];
+    if (!ext) {
+      return res.status(400).json({ success: false, error: 'รองรับเฉพาะ PDF, DOCX, XLSX' });
+    }
+
+    // ~20MB original → ~26.7MB base64
+    if (file_base64.length > 27_000_000) {
+      return res.status(400).json({ success: false, error: 'ไฟล์ใหญ่เกิน 20MB' });
+    }
+
+    const conv = await inboxService.getConversation(+req.params.id);
+    if (!conv) return res.status(404).json({ success: false, error: 'ไม่พบบทสนทนา' });
+    if (conv.channel !== 'line') {
+      return res.status(400).json({ success: false, error: 'รองรับเฉพาะ LINE ในขณะนี้' });
+    }
+
+    // Save file to disk
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const filePath = path.join(UPLOADS_DIR, safeName);
+    const fileBuf  = Buffer.from(file_base64, 'base64');
+    fs.writeFileSync(filePath, fileBuf);
+
+    const fileSize = fileBuf.length;
+    const sizeStr  = fileSize > 1_048_576
+      ? `${(fileSize / 1_048_576).toFixed(1)} MB`
+      : `${(fileSize / 1024).toFixed(0)} KB`;
+
+    const appUrl  = process.env.APP_URL || `https://${req.get('host')}`;
+    const fileUrl = `${appUrl}/uploads/${safeName}`;
+
+    // Choose icon by file type
+    const icon = ext === 'pdf' ? '📄' : (ext === 'xlsx' || ext === 'xls') ? '📊' : '📝';
+
+    // Build LINE Flex Message — looks like a file card with download button
+    const flexMsg = {
+      type: 'flex',
+      altText: `${icon} ${filename}`,
+      contents: {
+        type: 'bubble',
+        size: 'kilo',
+        body: {
+          type: 'box',
+          layout: 'horizontal',
+          spacing: 'md',
+          paddingAll: 'lg',
+          contents: [
+            {
+              type: 'text',
+              text: icon,
+              size: 'xxl',
+              flex: 0,
+              gravity: 'center',
+            },
+            {
+              type: 'box',
+              layout: 'vertical',
+              flex: 1,
+              contents: [
+                {
+                  type: 'text',
+                  text: filename,
+                  weight: 'bold',
+                  size: 'sm',
+                  wrap: true,
+                  maxLines: 2,
+                  color: '#111111',
+                },
+                {
+                  type: 'text',
+                  text: sizeStr,
+                  size: 'xs',
+                  color: '#888888',
+                  margin: 'sm',
+                },
+              ],
+            },
+          ],
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: 'md',
+          contents: [
+            {
+              type: 'button',
+              action: {
+                type: 'uri',
+                label: '⬇️ ดาวน์โหลดไฟล์',
+                uri: fileUrl,
+              },
+              style: 'primary',
+              color: '#2563eb',
+              height: 'sm',
+            },
+          ],
+        },
+        styles: {
+          body:   { backgroundColor: '#f8fafc' },
+          footer: { backgroundColor: '#f8fafc', separator: true },
+        },
+      },
+    };
+
+    const lc = getLineClient();
+    await lc.pushMessage({ to: conv.sender_id, messages: [flexMsg] });
+
+    // Save to inbox (JSON content so staff UI can render file bubble)
+    const staffName = req.user.display_name || req.user.username;
+    const content   = JSON.stringify({ url: fileUrl, filename, size: fileSize });
+    const msg = await inboxService.saveMessage(
+      conv.id, 'out', 'staff', content, staffName, 'file'
+    );
+
+    res.json({ success: true, message: msg, url: fileUrl });
+  } catch (e) {
+    console.error('[inbox] POST reply-file:', e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // ── PATCH /api/inbox/:id/assign — assign to staff ────────────────
 router.patch('/:id/assign', requireAuth, async (req, res) => {
   try {

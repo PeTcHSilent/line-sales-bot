@@ -26,7 +26,8 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Body parsing for /api routes ─────────────────────────────────
-app.use('/api', express.json());
+// limit 20MB to support base64 file uploads (PDF, DOCX etc.)
+app.use('/api', express.json({ limit: '20mb' }));
 
 // ── Health check ─────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
