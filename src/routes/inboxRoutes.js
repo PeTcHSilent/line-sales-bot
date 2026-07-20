@@ -39,6 +39,47 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /api/inbox/image-proxy?url=&t=JWT — proxy LINE image ────
+// MUST be before /:id wildcard — otherwise Express matches "image-proxy" as an :id
+// LINE image API requires Authorization header; browser <img> can't send it.
+router.get('/image-proxy', async (req, res) => {
+  try {
+    const { url, t } = req.query;
+
+    // Verify JWT (passed as query param since img tags can't set headers)
+    if (!t) return res.status(401).send('Unauthorized');
+    try {
+      jwt.verify(t, process.env.JWT_SECRET);
+    } catch (_) {
+      return res.status(401).send('Unauthorized');
+    }
+
+    // Only allow LINE content URLs
+    if (!url || !url.startsWith('https://api-data.line.me/')) {
+      return res.status(400).send('Invalid URL');
+    }
+
+    const lineRes = await fetch(url, {
+      headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+    });
+
+    if (!lineRes.ok) {
+      console.error(`[image-proxy] LINE returned ${lineRes.status} for ${url}`);
+      return res.status(lineRes.status).send('LINE fetch failed');
+    }
+
+    const contentType = lineRes.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+
+    const buf = await lineRes.arrayBuffer();
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    console.error('[image-proxy] error:', e.message);
+    res.status(500).send('Proxy error');
+  }
+});
+
 // ── GET /api/inbox/:id — get one conversation ───────────────────
 router.get('/:id', requireAuth, async (req, res) => {
   try {
@@ -187,47 +228,6 @@ router.patch('/:id/assign', requireAuth, async (req, res) => {
     res.json({ success: true, conversation: conv });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// ── GET /api/inbox/image-proxy?url=&t=JWT — proxy LINE image ────
-// LINE image API requires Authorization header; browser <img> can't send it.
-// We verify JWT via query param, then proxy the image with the channel token.
-router.get('/image-proxy', async (req, res) => {
-  try {
-    const { url, t } = req.query;
-
-    // Verify JWT (passed as query param since img tags can't set headers)
-    if (!t) return res.status(401).send('Unauthorized');
-    try {
-      jwt.verify(t, process.env.JWT_SECRET);
-    } catch (_) {
-      return res.status(401).send('Unauthorized');
-    }
-
-    // Only allow LINE content URLs
-    if (!url || !url.startsWith('https://api-data.line.me/')) {
-      return res.status(400).send('Invalid URL');
-    }
-
-    const lineRes = await fetch(url, {
-      headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
-    });
-
-    if (!lineRes.ok) {
-      console.error(`[image-proxy] LINE returned ${lineRes.status} for ${url}`);
-      return res.status(lineRes.status).send('LINE fetch failed');
-    }
-
-    const contentType = lineRes.headers.get('content-type') || 'image/jpeg';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-
-    const buf = await lineRes.arrayBuffer();
-    res.send(Buffer.from(buf));
-  } catch (e) {
-    console.error('[image-proxy] error:', e.message);
-    res.status(500).send('Proxy error');
   }
 });
 
