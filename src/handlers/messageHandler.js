@@ -191,8 +191,6 @@ async function handleImage(event, client) {
     }
     if (!conv) return;
 
-    // LINE image URL — requires LINE_CHANNEL_ACCESS_TOKEN to fetch the actual bytes
-    // We store the API URL; staff UI will display it (token-authenticated proxy not needed for preview)
     const messageId  = event.message?.id;
     const contentUrl = messageId
       ? `https://api-data.line.me/v2/bot/message/${messageId}/content`
@@ -207,6 +205,43 @@ async function handleImage(event, client) {
   }
 }
 
+// ── handleFile ───────────────────────────────────────────────────────
+// LINE supports: video, audio, file (PDF, DOCX, etc.) — same content URL pattern
+async function handleFile(event, client) {
+  try {
+    const lineUserId = event.source?.userId;
+    if (!lineUserId) return;
+
+    const displayName = (await client.getProfile(lineUserId).catch(() => null))?.displayName || 'ลูกค้า';
+    let conv;
+    try {
+      conv = await inboxService.getOrCreateConversation('line', lineUserId, displayName, null);
+    } catch (e) {
+      console.error('[handler] file getOrCreate:', e.message);
+    }
+    if (!conv) return;
+
+    const messageId = event.message?.id;
+    const fileName  = event.message?.fileName  || 'ไฟล์แนบ';
+    const fileSize  = event.message?.fileSize  || 0;
+    const contentUrl = messageId
+      ? `https://api-data.line.me/v2/bot/message/${messageId}/content`
+      : null;
+
+    if (!contentUrl) return;
+
+    // Store as JSON so staff UI can render filename + download button
+    const content = JSON.stringify({ url: contentUrl, filename: fileName, size: fileSize });
+
+    await inboxService.saveMessage(conv.id, 'in', 'customer', content, displayName, 'file')
+      .catch(e => console.error('[handler] save file:', e.message));
+
+    console.log(`[handler] file "${fileName}" from ${lineUserId} saved (msg#${messageId})`);
+  } catch (e) {
+    console.error('[handler] handleFile error:', e.message);
+  }
+}
+
 /**
  * dispatch — router หลักสำหรับ LINE events
  */
@@ -216,6 +251,9 @@ async function dispatch(event, client) {
     case 'message':
       if (event.message?.type === 'text')  return handleText(event, client);
       if (event.message?.type === 'image') return handleImage(event, client);
+      if (event.message?.type === 'file')  return handleFile(event, client);
+      if (event.message?.type === 'video') return handleFile(event, client); // reuse same pattern
+      if (event.message?.type === 'audio') return handleFile(event, client);
       break;
     case 'unfollow':
       console.log('[handler] unfollow:', event.source?.userId);

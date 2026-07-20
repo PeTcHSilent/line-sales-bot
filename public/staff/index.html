@@ -251,6 +251,18 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);he
 /* ── Image message ── */
 .inbox-bubble img{max-width:220px;max-height:220px;border-radius:10px;display:block;cursor:pointer}
 .inbox-bubble img:hover{opacity:.9}
+.img-wrap{display:inline-block;position:relative}
+.btn-dl-img{display:block;margin-top:5px;font-size:.72rem;color:var(--blue);cursor:pointer;background:none;border:none;padding:0;text-decoration:underline}
+.btn-dl-img:hover{color:var(--blue2)}
+
+/* ── File message ── */
+.file-bubble{display:flex;align-items:center;gap:10px;background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.2);border-radius:10px;padding:10px 14px;min-width:180px;max-width:280px}
+.file-bubble .file-icon{font-size:1.6rem;flex-shrink:0}
+.file-bubble .file-info{flex:1;overflow:hidden}
+.file-bubble .file-name{font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-bubble .file-size{font-size:.72rem;color:var(--gray);margin-top:2px}
+.btn-dl-file{margin-top:6px;padding:3px 10px;background:var(--blue);color:#fff;border:none;border-radius:5px;font-size:.72rem;cursor:pointer;white-space:nowrap}
+.btn-dl-file:hover{background:var(--blue2)}
 
 /* ── Responsive ── */
 @media(max-width:640px){
@@ -748,13 +760,37 @@ function buildMsgEl(m) {
     ? fmtTime(m.created_at)
     : `${m.sender === 'bot' ? '🤖 AI' : '🧑 ' + escHtml(m.sender_name || 'พนักงาน')} · ${fmtTime(m.created_at)}`;
 
-  // Render image messages
+  // Render image / file messages
   let bubbleBody;
+  const tok = localStorage.getItem('sb_staff_token') || '';
+
   if (m.msg_type === 'image' && m.content) {
-    // LINE image API requires Authorization header — use server-side proxy
-    const tok = localStorage.getItem('sb_staff_token') || '';
+    // LINE image — proxy to inject Authorization header
     const proxyUrl = `/api/inbox/image-proxy?url=${encodeURIComponent(m.content)}&t=${encodeURIComponent(tok)}`;
-    bubbleBody = `<img src="${proxyUrl}" alt="รูปภาพ" onclick="window.open('${proxyUrl}','_blank')" loading="lazy">`;
+    const dlUrl    = proxyUrl + '&dl=1&fn=image.jpg';
+    bubbleBody = `<div class="img-wrap">
+      <img src="${proxyUrl}" alt="รูปภาพ" onclick="window.open('${proxyUrl}','_blank')" loading="lazy">
+      <a class="btn-dl-img" href="${dlUrl}" download="image.jpg">⬇️ ดาวน์โหลดรูปภาพ</a>
+    </div>`;
+
+  } else if (m.msg_type === 'file' && m.content) {
+    // LINE file (PDF, DOCX, video, audio etc.) — stored as JSON
+    let fileData = { url: '', filename: 'ไฟล์แนบ', size: 0 };
+    try { fileData = JSON.parse(m.content); } catch (_) { fileData.url = m.content; }
+    const proxyUrl = `/api/inbox/image-proxy?url=${encodeURIComponent(fileData.url)}&t=${encodeURIComponent(tok)}`;
+    const dlUrl    = proxyUrl + `&dl=1&fn=${encodeURIComponent(fileData.filename || 'file')}`;
+    const sizeStr  = fileData.size ? ` · ${(fileData.size / 1024).toFixed(1)} KB` : '';
+    const ext = (fileData.filename || '').split('.').pop().toLowerCase();
+    const icon = ['pdf'].includes(ext) ? '📄' : ['doc','docx'].includes(ext) ? '📝' : ['xls','xlsx'].includes(ext) ? '📊' : ['mp4','mov','avi'].includes(ext) ? '🎬' : ['mp3','m4a','ogg'].includes(ext) ? '🎵' : '📎';
+    bubbleBody = `<div class="file-bubble">
+      <span class="file-icon">${icon}</span>
+      <div class="file-info">
+        <div class="file-name" title="${escHtml(fileData.filename)}">${escHtml(fileData.filename)}</div>
+        <div class="file-size">${sizeStr}</div>
+        <a class="btn-dl-file" href="${dlUrl}" download="${escHtml(fileData.filename)}">⬇️ ดาวน์โหลด</a>
+      </div>
+    </div>`;
+
   } else {
     bubbleBody = escHtml(m.content);
   }

@@ -39,14 +39,16 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// ── GET /api/inbox/image-proxy?url=&t=JWT — proxy LINE image ────
+// ── GET /api/inbox/image-proxy?url=&t=JWT&dl=1&fn=filename ──────
 // MUST be before /:id wildcard — otherwise Express matches "image-proxy" as an :id
-// LINE image API requires Authorization header; browser <img> can't send it.
+// LINE image/file API requires Authorization header; browser <img> / <a> can't send it.
+// dl=1  → force download (Content-Disposition: attachment)
+// fn=   → custom filename for download
 router.get('/image-proxy', async (req, res) => {
   try {
-    const { url, t } = req.query;
+    const { url, t, dl, fn } = req.query;
 
-    // Verify JWT (passed as query param since img tags can't set headers)
+    // Verify JWT (passed as query param since img/a tags can't set headers)
     if (!t) return res.status(401).send('Unauthorized');
     try {
       jwt.verify(t, process.env.JWT_SECRET);
@@ -68,9 +70,17 @@ router.get('/image-proxy', async (req, res) => {
       return res.status(lineRes.status).send('LINE fetch failed');
     }
 
-    const contentType = lineRes.headers.get('content-type') || 'image/jpeg';
+    const contentType = lineRes.headers.get('content-type') || 'application/octet-stream';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'private, max-age=3600');
+
+    // dl=1 → force download with optional filename
+    if (dl === '1') {
+      const safeFilename = fn
+        ? encodeURIComponent(fn)
+        : contentType.startsWith('image/') ? 'image.jpg' : 'file';
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${safeFilename}`);
+    }
 
     const buf = await lineRes.arrayBuffer();
     res.send(Buffer.from(buf));
